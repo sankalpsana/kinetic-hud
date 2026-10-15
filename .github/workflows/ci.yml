@@ -21,7 +21,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: frontend
-        run: npm install
+        run: npm install --include=optional
 
       - name: Build Next.js Production Bundle
         working-directory: frontend
