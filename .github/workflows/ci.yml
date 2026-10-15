@@ -25,7 +25,12 @@ jobs:
 
       - name: Build Next.js Production Bundle
         working-directory: frontend
-        run: npm run build
+        run: |
+          npm run build 2>&1 | tee build.log || {
+            ERR=$(tail -n 30 build.log | tr '\n' ' ')
+            echo "::error title=NextBuildError::$ERR"
+            exit 1
+          }
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
