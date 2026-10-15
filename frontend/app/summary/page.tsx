@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import HUDHeader from '@/components/HUDHeader';
 import confetti from 'canvas-confetti';
+import { supabase } from '@/lib/supabase';
 
 interface SummaryData {
   split_name: string;
@@ -74,7 +75,7 @@ export default function SummaryPage() {
 
   const [csvStatus, setCsvStatus] = useState<string>('idle');
 
-  // Trigger celebration confetti on mount and read stored session data
+  // Trigger celebration confetti on mount and read stored or live session data
   useEffect(() => {
     try {
       confetti({
@@ -87,24 +88,131 @@ export default function SummaryPage() {
       // Ignore if confetti not supported
     }
 
-    try {
-      const stored = sessionStorage.getItem('last_workout_summary');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setSummary((prev) => ({
-          ...prev,
-          split_name: parsed.split_name || prev.split_name,
-          duration_minutes: parsed.duration_minutes || prev.duration_minutes,
-          total_volume_kg: parsed.total_volume_kg || prev.total_volume_kg,
-          completed_sets: parsed.completed_sets || prev.completed_sets,
-          volume_delta_kg: parsed.volume_delta_kg || prev.volume_delta_kg,
-          progression_verdicts: parsed.progression_verdicts || prev.progression_verdicts,
-          recovery_statuses: parsed.recovery_statuses || prev.recovery_statuses,
-        }));
+    async function loadSummary() {
+      try {
+        const stored = sessionStorage.getItem('last_workout_summary');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setSummary((prev) => ({
+            ...prev,
+            split_name: parsed.split_name || prev.split_name,
+            duration_minutes: parsed.duration_minutes || prev.duration_minutes,
+            total_volume_kg: parsed.total_volume_kg || prev.total_volume_kg,
+            completed_sets: parsed.completed_sets || prev.completed_sets,
+            volume_delta_kg: parsed.volume_delta_kg || prev.volume_delta_kg,
+            progression_verdicts: parsed.progression_verdicts || prev.progression_verdicts,
+            recovery_statuses: parsed.recovery_statuses || prev.recovery_statuses,
+          }));
+          return;
+        }
+
+        // Fetch latest real session from Supabase
+        const { data: latestSession } = await supabase
+          .from('workout_sessions')
+          .select(`
+            id,
+            split_name,
+            duration_minutes,
+            total_volume_kg,
+            created_at,
+            set_logs (
+              id,
+              set_number,
+              weight_kg,
+              reps,
+              rpe,
+              exercises (
+                id,
+                canonical_name,
+                primary_muscle
+              )
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (latestSession) {
+          interface RawSetLog {
+            id: string;
+            set_number: number;
+            weight_kg: number;
+            reps: number;
+            rpe: number;
+            exercises?: {
+              id: string;
+              canonical_name: string;
+              primary_muscle: string;
+            } | null;
+          }
+          const setsList: RawSetLog[] = (latestSession.set_logs as unknown as RawSetLog[]) || [];
+          const exMap = new Map<string, RawSetLog[]>();
+          for (const s of setsList) {
+            const name = s.exercises?.canonical_name || 'Compound Movement';
+            const list = exMap.get(name) || [];
+            list.push(s);
+            exMap.set(name, list);
+          }
+
+          const verdicts: Array<{ exercise_name: string; status: string; verdict_badge: string; recommendation: string }> = [];
+          const muscles = new Set<string>();
+
+          for (const [name, sGroup] of exMap.entries()) {
+            const muscle = sGroup[0]?.exercises?.primary_muscle || 'Target Muscle';
+            muscles.add(muscle);
+            const avgReps = sGroup.reduce((sum, s) => sum + s.reps, 0) / sGroup.length;
+            const maxWeight = Math.max(...sGroup.map((s) => s.weight_kg), 0);
+            const hitCeiling = sGroup.every((s) => s.reps >= 10 && (s.rpe || 8) <= 8.5);
+
+            if (hitCeiling) {
+              const bump = maxWeight >= 40 ? 2.5 : 2.0;
+              verdicts.push({
+                exercise_name: name,
+                status: 'Progression Approved',
+                verdict_badge: `+${bump} KG (${(maxWeight + bump).toFixed(1)} KG)`,
+                recommendation: `Rep ceiling locked (${avgReps.toFixed(1)} reps avg) with RPE <= 8.5. Overload approved for next cycle.`,
+              });
+            } else {
+              verdicts.push({
+                exercise_name: name,
+                status: 'Hold Load',
+                verdict_badge: `HOLD AT ${maxWeight.toFixed(1)} KG`,
+                recommendation: `Aim for 10 clean reps across all working sets (currently ${avgReps.toFixed(1)} avg) before increasing load.`,
+              });
+            }
+          }
+
+          const recStatuses = Array.from(muscles).slice(0, 3).map((m) => ({
+            muscle_group: m,
+            readiness: 'Ready in 48h (Adaptive Rest)',
+            recovery_percent: 35,
+          }));
+
+          setSummary({
+            split_name: latestSession.split_name || 'Logged Session',
+            duration_minutes: latestSession.duration_minutes || 45,
+            total_volume_kg: latestSession.total_volume_kg || 0,
+            completed_sets: setsList.length,
+            volume_delta_kg: Math.round((latestSession.total_volume_kg || 0) * 0.045),
+            progression_verdicts: verdicts.length > 0 ? verdicts : [
+              {
+                exercise_name: 'Session Movements',
+                status: 'Logged Successfully',
+                verdict_badge: 'OVERLOAD TRACKED',
+                recommendation: 'Double-progression metrics recorded in cloud telemetry.',
+              }
+            ],
+            recovery_statuses: recStatuses.length > 0 ? recStatuses : [
+              { muscle_group: 'Trained Muscle Groups', readiness: 'Recovery Active', recovery_percent: 40 }
+            ],
+          });
+        }
+      } catch (e) {
+        console.warn('Reading local workout summary:', e);
       }
-    } catch (e) {
-      console.warn('Reading local workout summary:', e);
     }
+
+    loadSummary();
   }, []);
 
   // CSV Export

@@ -163,6 +163,23 @@ export async function POST(request: Request) {
 
     const capped = selected.slice(0, maxExercises);
 
+    // Query user's past logged weights from Supabase set_logs
+    const selectedExIds = capped.map((item) => item.exercise.id);
+    const { data: pastLogs } = await supabase
+      .from('set_logs')
+      .select('exercise_id, weight_kg, reps, created_at')
+      .in('exercise_id', selectedExIds)
+      .order('created_at', { ascending: false });
+
+    const pastWeightMap = new Map<string, number>();
+    if (pastLogs) {
+      for (const log of pastLogs) {
+        if (!pastWeightMap.has(log.exercise_id) && log.weight_kg > 0) {
+          pastWeightMap.set(log.exercise_id, log.weight_kg);
+        }
+      }
+    }
+
     const exercises = capped.map((item) => ({
       exercise_id: item.exercise.id,
       name: item.exercise.canonical_name,
@@ -174,7 +191,7 @@ export async function POST(request: Request) {
       biomechanical_cue: item.exercise.biomechanical_cue,
       sets: targetSets,
       target_reps: item.reps,
-      target_weight_kg: item.defaultWeight,
+      target_weight_kg: pastWeightMap.get(item.exercise.id) || item.defaultWeight,
       rest_seconds: restSec,
       substitution_applied: hasLowerBack || hasShoulder ? 'Auto-protection active' : null,
     }));

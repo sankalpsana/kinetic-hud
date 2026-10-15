@@ -46,6 +46,7 @@ function WorkoutContent() {
   // Steppers State for active set
   const [weight, setWeight] = useState<number>(32.5);
   const [reps, setReps] = useState<number>(10);
+  const [sessionStartTime] = useState<number>(() => Date.now());
 
   // Rest Timer State
   const [restSeconds, setRestSeconds] = useState<number>(105);
@@ -228,20 +229,30 @@ function WorkoutContent() {
 
   // Finish session
   const handleFinishSession = async () => {
+    const elapsedMinutes = Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000));
+    const setsToLog =
+      completedSets.length > 0
+        ? completedSets
+        : [
+            {
+              exercise_id: currentExercise.exercise_id,
+              set_number: 1,
+              weight_kg: weight,
+              reps: reps,
+              rpe: 8.0,
+            },
+          ];
+
     try {
       const res = await fetch('/api/routine/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           split_name: splitParam,
-          duration_minutes: 44,
+          duration_minutes: elapsedMinutes,
           energy_score: energyParam,
           soreness_flags: sorenessParam,
-          sets: completedSets.length > 0 ? completedSets : [
-            { exercise_id: currentExercise.exercise_id, set_number: 1, weight_kg: 32.5, reps: 10, rpe: 8.0 },
-            { exercise_id: currentExercise.exercise_id, set_number: 2, weight_kg: 32.5, reps: 10, rpe: 8.5 },
-            { exercise_id: currentExercise.exercise_id, set_number: 3, weight_kg: 32.5, reps: 9, rpe: 9.0 },
-          ],
+          sets: setsToLog,
         }),
       });
       const data = await res.json();

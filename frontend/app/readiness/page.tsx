@@ -3,6 +3,7 @@
 import { useState, useEffect, useId } from 'react';
 import { useRouter } from 'next/navigation';
 import HUDHeader from '@/components/HUDHeader';
+import { supabase } from '@/lib/supabase';
 
 interface SoreSpot {
   id: string;
@@ -26,6 +27,35 @@ export default function ReadinessPage() {
   ]);
   const [splitName, setSplitName] = useState<string>('Pull Day A');
   const [estimatedFinish, setEstimatedFinish] = useState<string>('--:--');
+  const [lastSessionInfo, setLastSessionInfo] = useState<string | null>(null);
+
+  // Fetch last completed session from Supabase to auto-suggest next split
+  useEffect(() => {
+    async function fetchLastSession() {
+      try {
+        const { data } = await supabase
+          .from('workout_sessions')
+          .select('split_name, created_at')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (data?.split_name) {
+          const split = data.split_name;
+          let nextSplit = 'Push Day A';
+          if (split.toLowerCase().includes('pull')) nextSplit = 'Push Day A';
+          else if (split.toLowerCase().includes('push')) nextSplit = 'Leg Day A';
+          else nextSplit = 'Pull Day A';
+
+          setSplitName(nextSplit);
+          setLastSessionInfo(`Last logged: ${split} • Rotation suggests ${nextSplit}`);
+        }
+      } catch (e) {
+        console.warn('Could not read last session from Supabase:', e);
+      }
+    }
+    fetchLastSession();
+  }, []);
 
   useEffect(() => {
     const d = new Date();
@@ -120,6 +150,12 @@ export default function ReadinessPage() {
             <p className="font-body text-[14px] text-[#bbcabf]">
               Quick 10-second check to auto-regulate today&apos;s workout
             </p>
+            {lastSessionInfo && (
+              <div className="flex items-center gap-2 mt-1 px-3 py-1.5 rounded-lg bg-[#181b25] border border-[#3c4a42]/40 text-[#4edea3] font-metric text-xs">
+                <span className="material-symbols-outlined text-[16px]">sync_alt</span>
+                <span>{lastSessionInfo}</span>
+              </div>
+            )}
           </section>
 
           {/* Split Selector Pill */}
