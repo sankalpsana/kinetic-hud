@@ -41,9 +41,10 @@ web_app.add_middleware(
 class RoutineGenerateRequest(BaseModel):
     user_id: Optional[str] = "00000000-0000-0000-0000-000000000001"
     split_name: Optional[str] = "Pull Day A"
+    split_type: Optional[str] = None # e.g. "PULL_A", "PULL_B", "PUSH_A", "PUSH_B", "LEGS_A", "LEGS_B"
     time_minutes: int = Field(default=45, ge=15, le=120)
     energy_score: int = Field(default=4, ge=1, le=5)
-    soreness_flags: List[str] = Field(default_factory=list) # e.g. ["lower-back", "shoulder"]
+    soreness_flags: List[str] = Field(default_factory=list) # e.g. ["lower_back", "shoulder"]
 
 class PrescribedExercise(BaseModel):
     exercise_id: str
@@ -54,6 +55,11 @@ class PrescribedExercise(BaseModel):
     joint_stress_flags: List[str]
     gif_url: str
     biomechanical_cue: str
+    primary_split: str
+    split_rotation: str
+    target_division: str
+    resistance_profile: str
+    stability_tier: str
     sets: int
     target_reps: str
     target_weight_kg: float
@@ -61,6 +67,7 @@ class PrescribedExercise(BaseModel):
     substitution_applied: Optional[str] = None
 
 class RoutineGenerateResponse(BaseModel):
+    split_type: str
     split_name: str
     focus_subtitle: str
     estimated_duration_min: int
@@ -89,6 +96,7 @@ class SetLogItem(BaseModel):
 
 class RoutineLogRequest(BaseModel):
     user_id: Optional[str] = "00000000-0000-0000-0000-000000000001"
+    split_type: Optional[str] = "PULL_A"
     split_name: str = "Pull Day A"
     duration_minutes: int = 44
     energy_score: int = 4
@@ -108,6 +116,7 @@ class RecoveryStatus(BaseModel):
 
 class RoutineLogResponse(BaseModel):
     session_id: str
+    split_type: str
     split_name: str
     duration_minutes: int
     total_volume_kg: float
@@ -183,162 +192,221 @@ def toggle_equipment(payload: EquipmentToggleRequest):
 @web_app.post("/api/routine/generate", response_model=RoutineGenerateResponse)
 def generate_routine(req: RoutineGenerateRequest):
     """
-    Evaluates user time, energy score (1–5), and soreness flags against biomechanical rules:
-    - Lower back tightness offloads axial spine loading (substitutes chest-supported rows, leg presses).
-    - Shoulder pain swaps wide barbell presses for neutral dumbbell presses or converging machines.
-    - Energy score scales working sets and target intensity.
-    - Time constraint trims volume and structures rest intervals.
+    Agent 1: Biomechanical Hypertrophy Planner
+    - Reads last session split_type from Supabase to advance 6-phase rotation cycle:
+      PULL_A -> PUSH_A -> LEGS_A -> PULL_B -> PUSH_B -> LEGS_B -> PULL_A
+    - Hard SQL Filtering: Restrict queries strictly to primary_split = :split AND split_rotation = :rotation.
+      Guarantees zero cross-muscle contamination (e.g. legs never appear in Push/Pull).
+    - Biomechanical Substitution: Eliminates axial spinal loads upon lower back soreness flags.
+    - Volume Rule: Cap movements at 4–5 exercises, prescribing strictly 2–3 hard working sets (0–2 RIR).
+    - Emits movement-specific rest_default_seconds and stability tiers.
     """
     supabase = get_supabase()
 
-    # 1. Fetch available equipment
-    eq_res = supabase.table("user_equipment").select("*").eq("user_id", req.user_id).execute()
-    equipment_rows = eq_res.data or []
-    available_tags = {r["equipment_tag"] for r in equipment_rows if r.get("is_available", True)}
+    CYCLE = ["PULL_A", "PUSH_A", "LEGS_A", "PULL_B", "PUSH_B", "LEGS_B"]
+    SPLIT_NAMES = {
+        "PULL_A": "Pull Day A (Lats & Deep Stretch)",
+        "PUSH_A": "Push Day A (Sternal Chest & Long Head)",
+        "LEGS_A": "Legs Day A (Quad Dominant)",
+        "PULL_B": "Pull Day B (Upper Back & Traps)",
+        "PUSH_B": "Push Day B (Clavicular Chest & Lateral Delts)",
+        "LEGS_B": "Legs Day B (Posterior Chain & Glutes)"
+    }
+    
+    target_split_type = None
+    if req.split_type and req.split_type.upper() in CYCLE:
+        target_split_type = req.split_type.upper()
+    elif req.split_name:
+        s_norm = req.split_name.upper().replace(" ", "_")
+        for c in CYCLE:
+            if c in s_norm:
+                target_split_type = c
+                break
+        if not target_split_type:
+            # Check prefix
+            prefix = s_norm.split("_")[0]
+            for c in CYCLE:
+                if c.startswith(prefix):
+                    if "B" in s_norm and "_B" in c:
+                        target_split_type = c
+                        break
+                    elif "B" not in s_norm and "_A" in c:
+                        target_split_type = c
+                        break
+
+    if not target_split_type:
+        # Query last session from Supabase
+        try:
+            last_sess = supabase.table("workout_sessions").select("split_type, created_at").order("created_at", desc=True).limit(1).execute()
+            if last_sess.data and last_sess.data[0].get("split_type"):
+                last_type = last_sess.data[0]["split_type"].upper()
+                if last_type in CYCLE:
+                    idx = (CYCLE.index(last_type) + 1) % len(CYCLE)
+                    target_split_type = CYCLE[idx]
+                else:
+                    target_split_type = "PULL_A"
+            else:
+                target_split_type = "PULL_A"
+        except Exception:
+            target_split_type = "PULL_A"
+
+    split_parts = target_split_type.split("_")
+    primary_split = split_parts[0] # "PULL", "PUSH", "LEGS"
+    split_rotation = split_parts[1] # "A", "B"
+    display_split_name = SPLIT_NAMES.get(target_split_type, f"{primary_split.capitalize()} Day {split_rotation}")
+
+    # 2. Hard SQL Filtering: primary_split = :split AND split_rotation = :rotation
+    ex_res = supabase.table("exercises") \
+        .select("*") \
+        .eq("primary_split", primary_split) \
+        .eq("split_rotation", split_rotation) \
+        .execute()
+    candidate_exercises = ex_res.data or []
+
+    # 3. Available equipment filtering
+    eq_res = supabase.table("user_equipment").select("equipment_tag, is_available").eq("user_id", req.user_id).execute()
+    available_tags = {r["equipment_tag"] for r in (eq_res.data or []) if r.get("is_available", True)}
     if not available_tags:
-        available_tags = {"barbell", "dumbbells", "squat_rack", "adjustable_bench", "cable_crossover", "lat_pulldown", "cable_row", "leg_press", "leg_extension_curl"}
-
-    # 2. Fetch canonical exercises
-    ex_res = supabase.table("exercises").select("*").execute()
-    all_exercises = ex_res.data or []
-
-    # Map exercises by canonical_name
-    by_name = {ex["canonical_name"]: ex for ex in all_exercises}
+        available_tags = {"barbell", "dumbbells", "squat_rack", "adjustable_bench", "cable_crossover", "lat_pulldown", "cable_row", "leg_press", "leg_extension_curl", "hack_squat", "smith_machine"}
 
     adjustments = []
-    has_lower_back = any("back" in s.lower() for s in req.soreness_flags)
-    has_shoulder = any("shoulder" in s.lower() for s in req.soreness_flags)
-    has_knees = any("knee" in s.lower() for s in req.soreness_flags)
+    flags_lower = [f.lower() for f in req.soreness_flags]
+    has_lower_back = any("back" in f or "spine" in f or "lumbar" in f for f in flags_lower)
+    has_shoulder = any("shoulder" in f for f in flags_lower)
 
-    # 3. Select exercises according to split and biomechanical rules
-    selected_exercises = []
-    
-    # Target volume by time
-    if req.time_minutes <= 30:
-        target_sets = 2
-        rest_sec = 60
-        max_exercises = 3
-    elif req.time_minutes <= 45:
-        target_sets = 3
-        rest_sec = 90
-        max_exercises = 4
-    elif req.time_minutes <= 60:
-        target_sets = 3
-        rest_sec = 105
-        max_exercises = 5
-    else:
-        target_sets = 4
-        rest_sec = 120
-        max_exercises = 6
+    # Biomechanical Substitution
+    filtered = []
+    for ex in candidate_exercises:
+        stress_flags = ex.get("joint_stress_flags") or []
+        eq_tag = ex.get("equipment_tag", "")
+        
+        # Lower back / axial spine check
+        if has_lower_back and "axial_spine" in stress_flags:
+            sub_res = supabase.table("exercises") \
+                .select("*") \
+                .eq("primary_split", primary_split) \
+                .eq("stability_tier", "S") \
+                .execute()
+            sub = next((s for s in (sub_res.data or []) if "axial_spine" not in (s.get("joint_stress_flags") or [])), None)
+            if sub and sub["id"] != ex["id"]:
+                ex_copy = dict(sub)
+                ex_copy["substitution_applied"] = f"Axial Spine Offload: Replaced {ex['canonical_name']} with {sub['canonical_name']} to eliminate lumbar shear stress."
+                adjustments.append(ex_copy["substitution_applied"])
+                filtered.append(ex_copy)
+                continue
+            else:
+                adjustments.append(f"Axial Spine Warning: {ex['canonical_name']} omitted due to lumbar soreness.")
+                continue
 
-    # Energy mode determination
+        # Shoulder impingement check
+        if has_shoulder and "shoulder" in stress_flags:
+            sub_res = supabase.table("exercises") \
+                .select("*") \
+                .eq("primary_split", primary_split) \
+                .eq("stability_tier", "S") \
+                .execute()
+            sub = next((s for s in (sub_res.data or []) if "shoulder" not in (s.get("joint_stress_flags") or [])), None)
+            if sub:
+                ex_copy = dict(sub)
+                ex_copy["substitution_applied"] = f"Shoulder Protection: Replaced {ex['canonical_name']} with {sub['canonical_name']} in scapular plane."
+                adjustments.append(ex_copy["substitution_applied"])
+                filtered.append(ex_copy)
+                continue
+
+        # Equipment availability check
+        if eq_tag and eq_tag not in available_tags:
+            sub_res = supabase.table("exercises").select("*").eq("primary_split", primary_split).execute()
+            sub = next((s for s in (sub_res.data or []) if s.get("equipment_tag") in available_tags and s["id"] != ex["id"]), None)
+            if sub:
+                ex_copy = dict(sub)
+                ex_copy["substitution_applied"] = f"Equipment Auto-Swap: {ex['canonical_name']} ({eq_tag} unavailable) replaced with {sub['canonical_name']}."
+                adjustments.append(ex_copy["substitution_applied"])
+                filtered.append(ex_copy)
+                continue
+
+        filtered.append(ex)
+
+    # 4. Volume Prescription Rule: Strictly 2–3 hard working sets (0–2 RIR)
+    max_exercises = 4 if req.time_minutes <= 45 else 5
+    selected_exercises = filtered[:max_exercises]
+
     if req.energy_score <= 2:
-        energy_mode = "Deload Mode"
-        target_sets = max(2, target_sets - 1)
-        adjustments.append("Deload Mode: Working sets reduced by 1 to prioritize neuromuscular recovery.")
-    elif req.energy_score == 3:
-        energy_mode = "Standard Target"
-    elif req.energy_score == 4:
-        energy_mode = "High Energy • Normal Intensity Target"
+        energy_mode = "Deload Mode (0–1 RIR reserve, 2 sets prescribed)"
+        sets_per_exercise = 2
+        adjustments.append("Deload Mode: 2 hard working sets prescribed to avoid nervous fatigue.")
+    elif req.energy_score >= 4:
+        energy_mode = "High Output Intensity (0–1 RIR, 3 working sets)"
+        sets_per_exercise = 3
     else:
-        energy_mode = "Peak Overdrive"
+        energy_mode = "Standard Hypertrophy Target (1–2 RIR, 3 sets)"
+        sets_per_exercise = 3
 
-    # Split routing
-    split_lower = (req.split_name or "Pull Day A").lower()
-    
-    if "pull" in split_lower:
-        focus = "Chest-supported row & lat development"
-        # Candidate 1: Primary Upper Back Row
-        if has_lower_back or "cable_row" in available_tags:
-            cand = by_name.get("Chest-Supported Row")
-            if has_lower_back:
-                adjustments.append("Lower Back Protection: Substituted Barbell Bent-Over Row with Chest-Supported Row to eliminate axial spinal shearing.")
-        else:
-            cand = by_name.get("Barbell Bent-Over Row") or by_name.get("Chest-Supported Row")
-        if cand: selected_exercises.append((cand, "32.5", "8–10"))
-
-        # Candidate 2: Vertical Pull
-        cand_lat = by_name.get("Lat Pulldown")
-        if cand_lat: selected_exercises.append((cand_lat, "55.0", "10–12"))
-
-        # Candidate 3: Secondary Row / Rear Delt / Lower Body accessory
-        cand_curl = by_name.get("Leg Curl")
-        if cand_curl and len(selected_exercises) < max_exercises:
-            selected_exercises.append((cand_curl, "45.0", "10–12"))
-
-    elif "push" in split_lower:
-        focus = "Chest hypertrophy & anterior deltoid protection"
-        # Candidate 1: Flat/Incline Press
-        if has_shoulder:
-            cand_press = by_name.get("Incline DB Press") or by_name.get("Neutral-Grip DB Shoulder Press")
-            adjustments.append("Shoulder Impingement Flag: Wide barbell presses replaced with 30° Incline Dumbbell Press in the scapular plane.")
-        else:
-            cand_press = by_name.get("Barbell Bench Press") or by_name.get("Incline DB Press")
-        if cand_press: selected_exercises.append((cand_press, "70.0", "6–8"))
-
-        # Candidate 2: Incline DB Press
-        cand_inc = by_name.get("Incline DB Press")
-        if cand_inc and cand_inc["id"] != selected_exercises[0][0]["id"]:
-            selected_exercises.append((cand_inc, "28.0", "8–10"))
-
-        # Candidate 3: Fly isolation
-        cand_fly = by_name.get("Cable Crossover")
-        if cand_fly and len(selected_exercises) < max_exercises:
-            selected_exercises.append((cand_fly, "15.0", "12–15"))
-
-        # Candidate 4: Shoulder Press
-        cand_ohp = by_name.get("Neutral-Grip DB Shoulder Press") if has_shoulder else (by_name.get("Overhead Barbell Press") or by_name.get("Neutral-Grip DB Shoulder Press"))
-        if cand_ohp and len(selected_exercises) < max_exercises:
-            selected_exercises.append((cand_ohp, "20.0", "10–12"))
-
-    else: # Leg or Full Body
-        focus = "Lower body quad and posterior chain stimulus"
-        if has_lower_back or "hack_squat" not in available_tags:
-            cand_squat = by_name.get("45° Leg Press")
-            if has_lower_back:
-                adjustments.append("Axial Offload: Replaced Barbell Back Squats with 45° Leg Press to eliminate compressive spinal load.")
-        else:
-            cand_squat = by_name.get("Hack Squat") or by_name.get("45° Leg Press")
-        if cand_squat: selected_exercises.append((cand_squat, "180.0", "8–10"))
-
-        cand_curl = by_name.get("Leg Curl")
-        if cand_curl: selected_exercises.append((cand_curl, "45.0", "10–12"))
-
-        cand_bench = by_name.get("Incline DB Press") or by_name.get("Barbell Bench Press")
-        if cand_bench and len(selected_exercises) < max_exercises:
-            selected_exercises.append((cand_bench, "30.0", "8–10"))
-
-        cand_row = by_name.get("Chest-Supported Row")
-        if cand_row and len(selected_exercises) < max_exercises:
-            selected_exercises.append((cand_row, "35.0", "10–12"))
-
-    # Cap to max_exercises
-    selected_exercises = selected_exercises[:max_exercises]
+    # 5. Fetch past loads from set_logs to pre-fill target_weight_kg
+    ex_ids = [ex["id"] for ex in selected_exercises]
+    past_loads = {}
+    if ex_ids:
+        try:
+            logs_res = supabase.table("set_logs") \
+                .select("exercise_id, weight_kg, reps, created_at") \
+                .in_("exercise_id", ex_ids) \
+                .order("created_at", desc=True) \
+                .execute()
+            for l in (logs_res.data or []):
+                eid = l["exercise_id"]
+                if eid not in past_loads:
+                    past_loads[eid] = float(l["weight_kg"])
+        except Exception as e:
+            print(f"Past logs note: {e}")
 
     # Build response objects
     prescribed = []
-    for ex_data, default_weight, rep_range in selected_exercises:
+    for ex in selected_exercises:
+        eid = ex["id"]
+        default_w = past_loads.get(eid)
+        if default_w is None:
+            if "leg" in ex["canonical_name"].lower() or "squat" in ex["canonical_name"].lower() or "press" in ex["canonical_name"].lower():
+                default_w = 60.0 if "leg" in ex["canonical_name"].lower() or "squat" in ex["canonical_name"].lower() else 35.0
+            elif "row" in ex["canonical_name"].lower() or "pulldown" in ex["canonical_name"].lower() or "rdl" in ex["canonical_name"].lower():
+                default_w = 40.0
+            else:
+                default_w = 15.0
+
         prescribed.append(PrescribedExercise(
-            exercise_id=str(ex_data["id"]),
-            name=ex_data["canonical_name"],
-            primary_muscle=ex_data["primary_muscle"],
-            movement_pattern=ex_data["movement_pattern"],
-            equipment_tag=ex_data["equipment_tag"],
-            joint_stress_flags=ex_data.get("joint_stress_flags") or [],
-            gif_url=ex_data.get("gif_url") or "",
-            biomechanical_cue=ex_data.get("biomechanical_cue") or "Control tempo and lock in bracing.",
-            sets=target_sets,
-            target_reps=rep_range,
-            target_weight_kg=float(default_weight),
-            rest_seconds=rest_sec,
-            substitution_applied="Joint-protection protocol active" if (has_lower_back or has_shoulder) else None
+            exercise_id=str(eid),
+            name=ex["canonical_name"],
+            primary_muscle=ex["primary_muscle"],
+            movement_pattern=ex["movement_pattern"],
+            equipment_tag=ex.get("equipment_tag", "dumbbells"),
+            joint_stress_flags=ex.get("joint_stress_flags") or [],
+            gif_url=ex.get("gif_url") or "",
+            biomechanical_cue=ex.get("biomechanical_cue") or "Control 3-second eccentric and train deep lengthened stretch.",
+            primary_split=ex.get("primary_split", primary_split),
+            split_rotation=ex.get("split_rotation", split_rotation),
+            target_division=ex.get("target_division", "general_hypertrophy"),
+            resistance_profile=ex.get("resistance_profile", "lengthened"),
+            stability_tier=ex.get("stability_tier", "S"),
+            sets=sets_per_exercise,
+            target_reps="8–10" if ex.get("stability_tier") in ["S", "A"] and ("press" in ex["canonical_name"].lower() or "squat" in ex["canonical_name"].lower()) else "10–12",
+            target_weight_kg=float(default_w),
+            rest_seconds=int(ex.get("rest_default_seconds") or 120),
+            substitution_applied=ex.get("substitution_applied")
         ))
 
-    summary_text = " • ".join(adjustments) if adjustments else "Standard progressive overload routine ready based on your current recovery state."
+    summary_text = " • ".join(adjustments) if adjustments else f"Deterministic {display_split_name} generated with zero cross-muscle contamination."
+
+    focus_map = {
+        "PULL_A": "Iliac Lats & Deep Lengthened Stretch Focus",
+        "PULL_B": "Upper Back, Rhomboids & Traps Hypertrophy",
+        "PUSH_A": "Sternal Pecs & Triceps Long Head Lengthened Focus",
+        "PUSH_B": "Clavicular Upper Chest & Lateral Delts Focus",
+        "LEGS_A": "Quad Dominant (Vastus Lateralis & Rectus Femoris)",
+        "LEGS_B": "Posterior Chain (Hamstrings Lengthened & Glutes)"
+    }
 
     return RoutineGenerateResponse(
-        split_name=req.split_name or "Pull Day A",
-        focus_subtitle=focus,
+        split_type=target_split_type,
+        split_name=display_split_name,
+        focus_subtitle=focus_map.get(target_split_type, "Scientific Hypertrophy Prescription"),
         estimated_duration_min=req.time_minutes,
         energy_score=req.energy_score,
         energy_mode=energy_mode,
@@ -453,19 +521,26 @@ Return a JSON object with:
 @web_app.post("/api/routine/log", response_model=RoutineLogResponse)
 def log_routine(req: RoutineLogRequest):
     """
-    Records session telemetry, individual set logs (weight, reps, RPE),
-    calculates volume and PR thresholds, and returns double-progression targets.
+    Agent 2: Hypertrophy Overload Auditor
+    - Triggers when session is submitted.
+    - Evaluates each exercise against deterministic Double Progression rules:
+      * If all prescribed sets hit the ceiling rep target (reps >= 10) at RPE <= 8.5:
+        Approve progression bump (+2.5 kg for compounds, +1.0-1.25 kg for isolations/cables).
+      * If rep ceiling missed: Verdict = 'Hold Load' (target 10 reps across all sets next session).
+      * If weight and reps unchanged for 2 consecutive sessions at RPE 9+: Flag exercise for plateau variation rotation.
+    - Calculates muscle-specific recovery windows based on hard sets performed (e.g. Lats: 48h, Biceps: 36h).
     """
     supabase = get_supabase()
 
-    # 1. Calculate session total volume
-    total_volume = sum(s.weight_kg * s.reps for s in req.sets)
-    completed_sets = len(req.sets)
+    completed_sets = [s for s in req.sets if s.reps > 0]
+    total_hard_sets = len(completed_sets)
+    total_volume = sum(s.weight_kg * s.reps for s in completed_sets)
 
-    # 2. Insert workout session
+    # 1. Insert workout session with split_type
     session_row = {
         "user_id": req.user_id,
         "split_name": req.split_name,
+        "split_type": req.split_type or "PULL_A",
         "duration_minutes": req.duration_minutes,
         "energy_score": req.energy_score,
         "soreness_flags": req.soreness_flags,
@@ -474,9 +549,9 @@ def log_routine(req: RoutineLogRequest):
     s_res = supabase.table("workout_sessions").insert(session_row).execute()
     session_id = s_res.data[0]["id"] if s_res.data else "00000000-0000-0000-0000-000000000099"
 
-    # 3. Insert individual set logs
+    # 2. Insert individual set logs
     set_records = []
-    for s in req.sets:
+    for s in completed_sets:
         set_records.append({
             "session_id": session_id,
             "exercise_id": s.exercise_id if "-" in s.exercise_id else None,
@@ -491,71 +566,121 @@ def log_routine(req: RoutineLogRequest):
         except Exception as e:
             print(f"Set logging note: {e}")
 
-    # 4. Compute Dynamic Double-Progression Targets from the actual sets!
-    exercise_sets_map: Dict[str, List[SetLogItem]] = {}
-    for s in req.sets:
+    # 3. Agent 2: Hypertrophy Overload Auditor
+    exercise_sets: Dict[str, List[SetLogItem]] = {}
+    for s in completed_sets:
         eid = s.exercise_id or "default"
-        if eid not in exercise_sets_map:
-            exercise_sets_map[eid] = []
-        exercise_sets_map[eid].append(s)
+        if eid not in exercise_sets:
+            exercise_sets[eid] = []
+        exercise_sets[eid].append(s)
 
-    # Fetch canonical exercises to resolve names
-    ex_res = supabase.table("exercises").select("id, canonical_name, primary_muscle").execute()
-    ex_lookup = {e["id"]: e["canonical_name"] for e in (ex_res.data or [])}
-    muscle_lookup = {e["id"]: e.get("primary_muscle", "Target Muscle") for e in (ex_res.data or [])}
+    ex_res = supabase.table("exercises").select("id, canonical_name, primary_muscle, stability_tier, resistance_profile").execute()
+    ex_meta = {e["id"]: e for e in (ex_res.data or [])}
 
     progression_verdicts = []
     trained_muscles = set()
 
-    for eid, sets_list in exercise_sets_map.items():
-        ex_name = ex_lookup.get(eid, "Compound Movement")
-        muscle = muscle_lookup.get(eid, "Primary Muscle")
-        trained_muscles.add(muscle)
+    for eid, sets_list in exercise_sets.items():
+        meta = ex_meta.get(eid, {})
+        ex_name = meta.get("canonical_name", "Exercise")
+        primary_muscle = meta.get("primary_muscle", "Muscle")
+        trained_muscles.add(primary_muscle)
 
-        avg_reps = sum(s.reps for s in sets_list) / len(sets_list) if sets_list else 10
-        max_weight = max((s.weight_kg for s in sets_list), default=30.0)
+        avg_reps = sum(s.reps for s in sets_list) / len(sets_list) if sets_list else 10.0
+        max_weight = max((s.weight_kg for s in sets_list), default=20.0)
+        
         all_hit_ceiling = all(s.reps >= 10 for s in sets_list) and all(s.rpe <= 8.5 for s in sets_list)
 
-        if all_hit_ceiling:
-            bump = 2.5 if max_weight >= 40 else 2.0
+        # Check plateau history
+        is_plateaued = False
+        try:
+            hist_res = supabase.table("set_logs") \
+                .select("weight_kg, reps, rpe, session_id, created_at") \
+                .eq("exercise_id", eid) \
+                .neq("session_id", session_id) \
+                .order("created_at", desc=True) \
+                .limit(6) \
+                .execute()
+            hist_sets = hist_res.data or []
+            if len(hist_sets) >= 4:
+                prev_weights = [h["weight_kg"] for h in hist_sets[:4]]
+                prev_rpes = [h.get("rpe", 8.0) for h in hist_sets[:4]]
+                if all(w == max_weight for w in prev_weights) and all(r >= 9.0 for r in prev_rpes):
+                    is_plateaued = True
+        except Exception as e:
+            print(f"Plateau check note: {e}")
+
+        # Scientific progression bump:
+        # +2.5 kg for compound presses/rows/squats/RDLs; +1.25 kg for isolations/cables/curls
+        is_compound = any(kw in ex_name.lower() for kw in ["press", "squat", "row", "deadlift", "rdl"])
+        bump = 2.5 if is_compound else 1.25
+
+        if is_plateaued:
+            progression_verdicts.append(ProgressionVerdict(
+                exercise_name=ex_name,
+                status="Plateau Detected",
+                verdict_badge="ROTATE VARIATION",
+                recommendation=f"Stalled at {max_weight} kg for 2 consecutive cycles at RPE 9+. Rotate to a biomechanical alternative next rotation."
+            ))
+        elif all_hit_ceiling:
+            next_weight = round(max_weight + bump, 2)
             progression_verdicts.append(ProgressionVerdict(
                 exercise_name=ex_name,
                 status="Progression Approved",
-                verdict_badge=f"+{bump} KG ({round(max_weight + bump, 1)} KG)",
-                recommendation=f"Rep ceiling satisfied ({round(avg_reps, 1)} reps avg) with RPE <= 8.5. Overload approved for next cycle."
+                verdict_badge=f"+{bump} KG ({next_weight} KG)",
+                recommendation=f"All sets completed at ceiling ({round(avg_reps, 1)} reps avg @ RPE <= 8.5). Increase load to {next_weight} kg next session."
             ))
         else:
             progression_verdicts.append(ProgressionVerdict(
                 exercise_name=ex_name,
                 status="Hold Load",
                 verdict_badge=f"HOLD AT {round(max_weight, 1)} KG",
-                recommendation=f"Aim for 10 clean reps across all working sets (currently {round(avg_reps, 1)} avg) before increasing load."
+                recommendation=f"Maintain {max_weight} kg. Target 10 clean reps across all working sets (currently {round(avg_reps, 1)} avg) before overloading."
             ))
 
-    # Dynamic recovery statuses based on muscles trained
+    RECOVERY_HOURS = {
+        "Chest": 48,
+        "Upper Chest": 48,
+        "Lats": 48,
+        "Upper Back": 48,
+        "Traps": 36,
+        "Deltoids": 36,
+        "Rear Delts": 36,
+        "Biceps": 36,
+        "Triceps": 36,
+        "Quadriceps": 72,
+        "Hamstrings": 72,
+        "Glutes": 72,
+        "Calves": 36
+    }
     recovery_statuses = []
-    if not trained_muscles:
-        trained_muscles = {"Upper Back & Lats", "Biceps & Arms", "Lower Back & Core"}
-    for m in list(trained_muscles)[:3]:
+    for m in trained_muscles:
+        hours = RECOVERY_HOURS.get(m, 48)
         recovery_statuses.append(RecoveryStatus(
             muscle_group=m,
+            readiness=f"Ready in {hours}h (Supercompensation Window)",
+            recovery_percent=int(round(max(25, 100 - (hours * 1.0))))
+        ))
+    if not recovery_statuses:
+        recovery_statuses.append(RecoveryStatus(
+            muscle_group="Prime Movers",
             readiness="Ready in 48h (Adaptive Rest)",
             recovery_percent=35
         ))
-    if len(recovery_statuses) < 3:
-        recovery_statuses.append(RecoveryStatus(
-            muscle_group="System Central Nervous System",
-            readiness="Optimal Recovery Active",
-            recovery_percent=85
-        ))
+    recovery_statuses.append(RecoveryStatus(
+        muscle_group="Central Nervous System",
+        readiness="Supercompensated in 24–36h",
+        recovery_percent=85
+    ))
 
     return RoutineLogResponse(
         session_id=str(session_id),
+        split_type=req.split_type or "PULL_A",
         split_name=req.split_name,
         duration_minutes=req.duration_minutes,
         total_volume_kg=round(total_volume, 1),
-        completed_sets=completed_sets,
-        volume_delta_kg=round(total_volume * 0.045, 1) if total_volume > 0 else 640.0,
+        completed_sets=total_hard_sets,
+        volume_delta_kg=round(total_volume * 0.04, 1),
         progression_verdicts=progression_verdicts,
         recovery_statuses=recovery_statuses
     )

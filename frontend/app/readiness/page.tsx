@@ -35,20 +35,29 @@ export default function ReadinessPage() {
       try {
         const { data } = await supabase
           .from('workout_sessions')
-          .select('split_name, created_at')
+          .select('split_type, split_name, created_at')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (data?.split_name) {
-          const split = data.split_name;
-          let nextSplit = 'Push Day A';
-          if (split.toLowerCase().includes('pull')) nextSplit = 'Push Day A';
-          else if (split.toLowerCase().includes('push')) nextSplit = 'Leg Day A';
-          else nextSplit = 'Pull Day A';
+        const CYCLE = ['PULL_A', 'PUSH_A', 'LEGS_A', 'PULL_B', 'PUSH_B', 'LEGS_B'] as const;
+        const SPLIT_LABEL_MAP: Record<string, string> = {
+          PULL_A: 'Pull Day A',
+          PUSH_A: 'Push Day A',
+          LEGS_A: 'Legs Day A',
+          PULL_B: 'Pull Day B',
+          PUSH_B: 'Push Day B',
+          LEGS_B: 'Legs Day B',
+        };
 
-          setSplitName(nextSplit);
-          setLastSessionInfo(`Last logged: ${split} • Rotation suggests ${nextSplit}`);
+        if (data?.split_type) {
+          const lastType = data.split_type.toUpperCase();
+          const idx = CYCLE.indexOf(lastType as typeof CYCLE[number]);
+          const nextType = idx !== -1 ? CYCLE[(idx + 1) % CYCLE.length] : 'PULL_A';
+          const nextLabel = SPLIT_LABEL_MAP[nextType] || 'Pull Day A';
+
+          setSplitName(nextLabel);
+          setLastSessionInfo(`Last logged: ${data.split_name || lastType} • Rotation suggests ${nextLabel}`);
         }
       } catch (e) {
         console.warn('Could not read last session from Supabase:', e);
@@ -159,13 +168,13 @@ export default function ReadinessPage() {
           </section>
 
           {/* Split Selector Pill */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {['Pull Day A', 'Push Day A', 'Leg Day A'].map((split) => (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {['Pull Day A', 'Push Day A', 'Legs Day A', 'Pull Day B', 'Push Day B', 'Legs Day B'].map((split) => (
               <button
                 key={split}
                 onClick={() => setSplitName(split)}
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-xs font-metric font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-metric font-semibold whitespace-nowrap transition-all ${
                   splitName === split
                     ? 'bg-[#4edea3] text-[#003824] shadow-md'
                     : 'bg-[#181b25] text-[#86948a] hover:text-[#dfe2ef] border border-[#1F2937]'

@@ -23,12 +23,19 @@ export interface Exercise {
   joint_stress_flags: string[];
   gif_url: string;
   biomechanical_cue: string;
+  primary_split: 'PUSH' | 'PULL' | 'LEGS';
+  split_rotation: 'A' | 'B';
+  target_division: string;
+  resistance_profile: 'lengthened' | 'shortened' | 'even';
+  stability_tier: 'S' | 'A' | 'B' | 'C';
+  rest_default_seconds: number;
 }
 
 export interface WorkoutSession {
   id?: string;
   user_id: string;
   split_name: string;
+  split_type: 'PULL_A' | 'PULL_B' | 'PUSH_A' | 'PUSH_B' | 'LEGS_A' | 'LEGS_B';
   duration_minutes: number;
   energy_score: number;
   soreness_flags: string[];
