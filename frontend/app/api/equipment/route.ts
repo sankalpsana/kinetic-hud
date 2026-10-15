@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase, DEFAULT_USER_ID } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('user_id') || DEFAULT_USER_ID;

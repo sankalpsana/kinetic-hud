@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase, DEFAULT_USER_ID, Exercise } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 const CYCLE = ['PULL_A', 'PUSH_A', 'LEGS_A', 'PULL_B', 'PUSH_B', 'LEGS_B'] as const;
 type SplitType = typeof CYCLE[number];
 

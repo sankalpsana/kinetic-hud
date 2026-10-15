@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase, Exercise } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   const startTime = performance.now();
   try {

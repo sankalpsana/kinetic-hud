@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase, DEFAULT_USER_ID } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 interface LogSetPayload {
   exercise_id: string;
   set_number: number;
