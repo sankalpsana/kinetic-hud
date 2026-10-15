@@ -1,0 +1,79 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+@layer base {
+  :root {
+    --surface: #0f131c;
+    --surface-container-lowest: #0a0e17;
+    --surface-container-low: #181b25;
+    --surface-container: #1c1f29;
+    --surface-container-high: #262a34;
+    --surface-container-highest: #31353f;
+    --primary: #4edea3;
+    --primary-container: #10b981;
+    --secondary: #ffb95f;
+    --secondary-container: #ee9800;
+    --tertiary: #ff7a73;
+    --outline: #86948a;
+    --on-surface: #dfe2ef;
+    --on-surface-variant: #bbcabf;
+  }
+
+  html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #0f131c;
+    color: #dfe2ef;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+  }
+
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top, 0px), 12px);
+  }
+
+  /* Hide scrollbar for technical sleek appearance */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Kinetic HUD Glow and Custom Utilities */
+.kinetic-glow-emerald {
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+}
+
+.kinetic-glow-amber {
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+}
+
+.kinetic-glow-crimson {
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.25);
+}
+
+.border-subtle {
+  border: 1px solid #1F2937;
+}
+
+.font-headline {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-metric {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.font-body {
+  font-family: 'Inter', sans-serif;
+}

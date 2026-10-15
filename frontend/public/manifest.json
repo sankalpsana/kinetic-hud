@@ -1,0 +1,22 @@
+{
+  "name": "Kinetic HUD - Adaptive Hypertrophy Engine",
+  "short_name": "Kinetic HUD",
+  "description": "Industrial telemetry & real-time auto-regulation cockpit for strength athletes",
+  "start_url": "/readiness",
+  "display": "standalone",
+  "background_color": "#0f131c",
+  "theme_color": "#0f131c",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500;600;700&amp;family=Space+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-tertiary-fixed": "#410004", "primary": "#4edea3", "on-primary-container": "#00422b", "on-secondary-container": "#5b3800", "tertiary-fixed": "#ffdad7", "primary-container": "#10b981", "surface-variant": "#31353f", "secondary": "#ffb95f", "surface-container-high": "#262a34", "on-secondary-fixed-variant": "#653e00", "tertiary": "#ffb3ad", "on-tertiary-container": "#79000e", "inverse-primary": "#006c49", "surface-container-low": "#181b25", "primary-fixed-dim": "#4edea3", "tertiary-fixed-dim": "#ffb3ad", "on-primary-fixed-variant": "#005236", "inverse-on-surface": "#2c303a", "secondary-fixed": "#ffddb8", "on-error-container": "#ffdad6", "primary-fixed": "#6ffbbe", "on-secondary-fixed": "#2a1700", "surface-bright": "#353943", "outline": "#86948a", "surface-container-highest": "#31353f", "on-surface-variant": "#bbcabf", "inverse-surface": "#dfe2ef", "on-error": "#690005", "error": "#ffb4ab", "surface-dim": "#0f131c", "on-primary-fixed": "#002113", "on-tertiary-fixed-variant": "#930013", "surface-container": "#1c1f29", "on-secondary": "#472a00", "surface": "#0f131c", "outline-variant": "#3c4a42", "on-surface": "#dfe2ef", "surface-container-lowest": "#0a0e17", "secondary-fixed-dim": "#ffb95f", "error-container": "#93000a", "on-primary": "#003824", "on-background": "#dfe2ef", "tertiary-container": "#ff7a73", "background": "#0f131c", "on-tertiary": "#68000a", "surface-tint": "#4edea3", "secondary-container": "#ee9800" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "margin-mobile": "1rem", "space-xs": "0.25rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "space-md": "1rem", "gutter-mobile": "0.75rem", "gutter": "1rem", "space-xl": "2.5rem", "margin": "1.5rem" }, "fontFamily": { "body-md": ["Inter"], "body-sm": ["Inter"], "metric-display-mobile": ["JetBrains Mono"], "label-caps": ["JetBrains Mono"], "headline-lg-mobile": ["Space Grotesk"], "metric-display": ["JetBrains Mono"], "metric-md": ["JetBrains Mono"], "headline-xl-mobile": ["Space Grotesk"], "headline-xl": ["Space Grotesk"], "headline-lg": ["Space Grotesk"], "headline-md": ["Space Grotesk"], "body-lg": ["Inter"], "metric-sm": ["JetBrains Mono"] }, "fontSize": { "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "metric-display-mobile": ["36px", { "lineHeight": "36px", "letterSpacing": "-0.03em", "fontWeight": "700" }], "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "600" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "metric-display": ["48px", { "lineHeight": "48px", "letterSpacing": "-0.04em", "fontWeight": "700" }], "metric-md": ["22px", { "lineHeight": "26px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-xl-mobile": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "metric-sm": ["15px", { "lineHeight": "20px", "fontWeight": "500" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="h-14 px-margin-mobile flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-high"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span><span class="font-label-caps text-label-caps text-primary tracking-wider">SYNC</span><span class="font-label-caps text-label-caps text-on-surface-variant">98%</span></div><span class="font-label-caps text-label-caps text-outline">SYS REV 4.2.0</span></div><div class="flex items-center gap-space-sm"><span class="font-headline-md text-headline-md text-on-surface tracking-tight uppercase">Readiness</span><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-14 pb-20 bg-surface px-margin-mobile"><div class="flex flex-col w-full pb-6 space-y-6">
+<!-- Header Section -->
+<section class="flex flex-col space-y-1">
+<div class="inline-flex items-center gap-2 self-start px-2 py-0.5 rounded-full bg-surface-container-high text-primary">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-caps text-label-caps tracking-wider uppercase">Pre-Lift Protocol</span>
+</div>
+<h1 class="font-headline-xl-mobile text-headline-xl-mobile text-on-surface font-bold tracking-tight">
+      Daily Check-in
+    </h1>
+<p class="font-body-md text-body-md text-on-surface-variant">
+      Quick 10-second check to customize today's workout
+    </p>
+</section>
+<!-- Section 1: Available Time Selector -->
+<section class="flex flex-col space-y-3 bg-surface-container-low p-4 rounded-xl shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">schedule</span>
+<h2 class="font-headline-md text-headline-md text-on-surface text-[17px] font-semibold">How much time do you have?</h2>
+</div>
+<span class="px-2 py-0.5 rounded font-metric-sm text-metric-sm bg-primary text-on-primary font-bold" id="selected-time-badge">45 MIN</span>
+</div>
+<!-- Time Preset Cards Grid -->
+<div class="grid grid-cols-2 gap-2 pt-1" id="time-grid">
+<button class="time-btn flex flex-col p-3 rounded-lg text-left transition-all bg-surface-container hover:bg-surface-container-high" data-time="30" type="button">
+<div class="flex items-center justify-between w-full">
+<span class="font-metric-md text-metric-md text-on-surface font-bold">30</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">MIN</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Quick Burn</span>
+</button>
+<button class="time-btn active flex flex-col p-3 rounded-lg text-left transition-all bg-primary-container text-on-primary-container shadow-sm" data-time="45" type="button">
+<div class="flex items-center justify-between w-full">
+<span class="font-metric-md text-metric-md font-bold">45</span>
+<span class="font-label-caps text-label-caps opacity-90">MIN</span>
+</div>
+<span class="font-body-sm text-body-sm opacity-90 mt-0.5">Standard Fit</span>
+</button>
+<button class="time-btn flex flex-col p-3 rounded-lg text-left transition-all bg-surface-container hover:bg-surface-container-high" data-time="60" type="button">
+<div class="flex items-center justify-between w-full">
+<span class="font-metric-md text-metric-md text-on-surface font-bold">60</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">MIN</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Full Routine</span>
+</button>
+<button class="time-btn flex flex-col p-3 rounded-lg text-left transition-all bg-surface-container hover:bg-surface-container-high" data-time="75" type="button">
+<div class="flex items-center justify-between w-full">
+<span class="font-metric-md text-metric-md text-on-surface font-bold">75+</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">MIN</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">High Volume</span>
+</button>
+</div>
+<!-- Minimal Slider Control -->
+<div class="pt-2 px-1 flex flex-col space-y-1.5">
+<div class="relative flex items-center w-full">
+<input class="w-full h-1.5 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none" id="time-range" max="90" min="30" step="15" type="range" value="45"/>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant font-label-caps text-[10px]">
+<span>30m Express</span>
+<span>60m Optimal</span>
+<span>90m Overdrive</span>
+</div>
+</div>
+</section>
+<!-- Section 2: Energy Level -->
+<section class="flex flex-col space-y-3 bg-surface-container-low p-4 rounded-xl shadow-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">bolt</span>
+<h2 class="font-headline-md text-headline-md text-on-surface text-[17px] font-semibold">Energy Level</h2>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant">RATING 1–5</span>
+</div>
+<!-- 5 Tap Targets -->
+<div class="grid grid-cols-5 gap-1.5" id="energy-grid">
+<button class="energy-btn flex flex-col items-center justify-center py-3.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors" data-energy="1" type="button">
+<span class="font-metric-md text-metric-md text-on-surface font-bold">1</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-1">Low</span>
+</button>
+<button class="energy-btn flex flex-col items-center justify-center py-3.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors" data-energy="2" type="button">
+<span class="font-metric-md text-metric-md text-on-surface font-bold">2</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-1">Fair</span>
+</button>
+<button class="energy-btn flex flex-col items-center justify-center py-3.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors" data-energy="3" type="button">
+<span class="font-metric-md text-metric-md text-on-surface font-bold">3</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-1">Good</span>
+</button>
+<button class="energy-btn active flex flex-col items-center justify-center py-3.5 rounded-lg bg-primary-container text-on-primary-container shadow-sm transition-colors" data-energy="4" type="button">
+<span class="font-metric-md text-metric-md font-bold">4</span>
+<span class="font-label-caps text-[10px] font-semibold mt-1">High</span>
+</button>
+<button class="energy-btn flex flex-col items-center justify-center py-3.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors" data-energy="5" type="button">
+<span class="font-metric-md text-metric-md text-on-surface font-bold">5</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-1">Peak</span>
+</button>
+</div>
+<!-- Dynamic Feedback Chip -->
+<div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container" id="energy-feedback">
+<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+<span class="font-body-sm text-body-sm text-on-surface font-medium">High Energy • Normal Intensity Target</span>
+</div>
+</section>
+<!-- Section 3: Soreness & Problem Areas -->
+<section class="flex flex-col space-y-3 bg-surface-container-low p-4 rounded-xl shadow-md">
+<div class="flex flex-col space-y-0.5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">healing</span>
+<h2 class="font-headline-md text-headline-md text-on-surface text-[17px] font-semibold">Any sore spots today?</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">We'll swap exercises to protect these areas</p>
+</div>
+<!-- Chips / Grid List -->
+<div class="grid grid-cols-2 gap-2 pt-1" id="soreness-container">
+<!-- Lower Back (Selected / Protected) -->
+<button class="sore-btn active flex items-center justify-between p-3 rounded-lg bg-secondary-container text-on-secondary-container text-left transition-all" data-spot="lower-back" type="button">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold">Lower Back</span>
+<span class="font-label-caps text-[10px] opacity-90 mt-0.5">Will protect</span>
+</div>
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+</button>
+<!-- Right Shoulder (Selected / Protected) -->
+<button class="sore-btn active flex items-center justify-between p-3 rounded-lg bg-secondary-container text-on-secondary-container text-left transition-all" data-spot="shoulder" type="button">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold">Right Shoulder</span>
+<span class="font-label-caps text-[10px] opacity-90 mt-0.5">Will protect</span>
+</div>
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+</button>
+<!-- Knees (Default / Unselected) -->
+<button class="sore-btn flex items-center justify-between p-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-left transition-all" data-spot="knees" type="button">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md">Knees</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-0.5">Ready</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">add_circle_outline</span>
+</button>
+<!-- Elbows (Default / Unselected) -->
+<button class="sore-btn flex items-center justify-between p-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-left transition-all" data-spot="elbows" type="button">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md">Elbows</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-0.5">Ready</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">add_circle_outline</span>
+</button>
+<!-- Chest / Pecs (Default / Unselected) -->
+<button class="sore-btn flex items-center justify-between p-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-left transition-all" data-spot="chest" type="button">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md">Chest / Pecs</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-0.5">Ready</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">add_circle_outline</span>
+</button>
+<!-- Hamstrings (Default / Unselected) -->
+<button class="sore-btn flex items-center justify-between p-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-left transition-all" data-spot="hamstrings" type="button">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md">Hamstrings</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant mt-0.5">Ready</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">add_circle_outline</span>
+</button>
+</div>
+<!-- Plain English Workout Adjustment Callout -->
+<div class="flex items-start gap-2.5 p-3 rounded-lg bg-surface-container mt-1">
+<span class="text-secondary text-[20px] leading-none select-none mt-0.5">💡</span>
+<div class="flex flex-col space-y-0.5">
+<span class="font-label-caps text-label-caps text-secondary font-bold uppercase tracking-wider">Adjustment Preview</span>
+<p class="font-body-sm text-body-sm text-on-surface leading-snug">
+          Deadlifts swapped for <span class="text-primary font-medium">Chest-Supported Rows</span> to protect your lower back and shoulder.
+        </p>
+</div>
+</div>
+</section>
+<!-- Section 4: Primary Launch CTA -->
+<section class="flex flex-col space-y-2 pt-2">
+<button class="w-full min-h-[54px] py-3.5 px-4 rounded-xl bg-primary-container text-on-primary-container font-headline-md text-[17px] font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.99] transition-transform" id="start-btn" type="button">
+<span>Start Workout • 45 Mins</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+<div class="flex items-center justify-center gap-1.5 text-on-surface-variant font-label-caps text-[11px]">
+<span class="material-symbols-outlined text-[14px]">history_toggle_off</span>
+<span>Estimated Finish: <strong class="text-on-surface font-semibold">18:45</strong></span>
+</div>
+</section>
+</div>
+<script>
+  (function () {
+    const timeButtons = document.querySelectorAll('.time-btn');
+    const timeRange = document.getElementById('time-range');
+    const timeBadge = document.getElementById('selected-time-badge');
+    const startBtn = document.getElementById('start-btn');
+    const energyButtons = document.querySelectorAll('.energy-btn');
+    const energyFeedback = document.getElementById('energy-feedback');
+    const soreButtons = document.querySelectorAll('.sore-btn');
+
+    let currentTime = 45;
+
+    function updateTimeUI(val) {
+      currentTime = val;
+      if (timeBadge) timeBadge.textContent = val + ' MIN';
+      if (startBtn) {
+        startBtn.querySelector('span').textContent = 'Start Workout • ' + val + ' Mins';
+      }
+      if (timeRange) timeRange.value = val;
+
+      timeButtons.forEach(btn => {
+        const btnVal = parseInt(btn.dataset.time, 10);
+        if (btnVal === parseInt(val, 10)) {
+          btn.className = 'time-btn active flex flex-col p-3 rounded-lg text-left transition-all bg-primary-container text-on-primary-container shadow-sm';
+          const labels = btn.querySelectorAll('span');
+          if (labels[0]) labels[0].className = 'font-metric-md text-metric-md font-bold';
+          if (labels[1]) labels[1].className = 'font-label-caps text-label-caps opacity-90';
+          if (labels[2]) labels[2].className = 'font-body-sm text-body-sm opacity-90 mt-0.5';
+        } else {
+          btn.className = 'time-btn flex flex-col p-3 rounded-lg text-left transition-all bg-surface-container hover:bg-surface-container-high text-on-surface';
+          const labels = btn.querySelectorAll('span');
+          if (labels[0]) labels[0].className = 'font-metric-md text-metric-md text-on-surface font-bold';
+          if (labels[1]) labels[1].className = 'font-label-caps text-label-caps text-on-surface-variant';
+          if (labels[2]) labels[2].className = 'font-body-sm text-body-sm text-on-surface-variant mt-0.5';
+        }
+      });
+    }
+
+    timeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        updateTimeUI(parseInt(btn.dataset.time, 10));
+      });
+    });
+
+    if (timeRange) {
+      timeRange.addEventListener('input', (e) => {
+        updateTimeUI(parseInt(e.target.value, 10));
+      });
+    }
+
+    const energyFeedbackMap = {
+      1: { text: "Low Energy • Focused Recovery & Shorter Sets", icon: "battery_low", color: "text-secondary" },
+      2: { text: "Fair Energy • Light Deload Mode Active", icon: "battery_3_bar", color: "text-secondary" },
+      3: { text: "Good Energy • Standard Sets Scheduled", icon: "battery_5_bar", color: "text-primary" },
+      4: { text: "High Energy • Normal Intensity Target", icon: "verified", color: "text-primary" },
+      5: { text: "Peak Energy • Target Personal Records Today!", icon: "local_fire_department", color: "text-primary" }
+    };
+
+    energyButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.energy, 10);
+        energyButtons.forEach(b => {
+          if (parseInt(b.dataset.energy, 10) === val) {
+            b.className = 'energy-btn active flex flex-col items-center justify-center py-3.5 rounded-lg bg-primary-container text-on-primary-container shadow-sm transition-colors';
+            const num = b.querySelector('.font-metric-md');
+            if (num) num.className = 'font-metric-md text-metric-md font-bold';
+            const label = b.querySelector('.font-label-caps');
+            if (label) label.className = 'font-label-caps text-[10px] font-semibold mt-1';
+          } else {
+            b.className = 'energy-btn flex flex-col items-center justify-center py-3.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors';
+            const num = b.querySelector('.font-metric-md');
+            if (num) num.className = 'font-metric-md text-metric-md text-on-surface font-bold';
+            const label = b.querySelector('.font-label-caps');
+            if (label) label.className = 'font-label-caps text-[10px] text-on-surface-variant mt-1';
+          }
+        });
+
+        if (energyFeedback && energyFeedbackMap[val]) {
+          const item = energyFeedbackMap[val];
+          energyFeedback.innerHTML = '<span class="material-symbols-outlined ' + item.color + ' text-[18px]">' + item.icon + '</span><span class="font-body-sm text-body-sm text-on-surface font-medium">' + item.text + '</span>';
+        }
+      });
+    });
+
+    soreButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const isActive = btn.classList.contains('active');
+        const titleSpan = btn.querySelector('.font-body-md');
+        const subSpan = btn.querySelector('.font-label-caps');
+        const iconSpan = btn.querySelector('.material-symbols-outlined');
+
+        if (isActive) {
+          btn.classList.remove('active');
+          btn.className = 'sore-btn flex items-center justify-between p-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-left transition-all';
+          if (subSpan) {
+            subSpan.textContent = 'Ready';
+            subSpan.className = 'font-label-caps text-[10px] text-on-surface-variant mt-0.5';
+          }
+          if (iconSpan) {
+            iconSpan.textContent = 'add_circle_outline';
+            iconSpan.className = 'material-symbols-outlined text-on-surface-variant text-[18px]';
+          }
+        } else {
+          btn.classList.add('active');
+          btn.className = 'sore-btn active flex items-center justify-between p-3 rounded-lg bg-secondary-container text-on-secondary-container text-left transition-all';
+          if (subSpan) {
+            subSpan.textContent = 'Will protect';
+            subSpan.className = 'font-label-caps text-[10px] opacity-90 mt-0.5';
+          }
+          if (iconSpan) {
+            iconSpan.textContent = 'check_circle';
+            iconSpan.className = 'material-symbols-outlined text-[18px]';
+          }
+        }
+      });
+    });
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.5)]" data-active-classes="text-primary"><div class="flex items-center justify-around h-16 px-space-xs"><a class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="readiness" href="#"><span class="material-symbols-outlined text-[22px]">ecg_heart</span><span class="font-label-caps text-label-caps uppercase mt-0.5">Readiness</span></a><a class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="workout" href="#"><span class="material-symbols-outlined text-[22px]">fitness_center</span><span class="font-label-caps text-label-caps uppercase mt-0.5">Workout</span></a><a class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="equipment" href="#"><span class="material-symbols-outlined text-[22px]">tune</span><span class="font-label-caps text-label-caps uppercase mt-0.5">Equipment</span></a><a class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="summary" href="#"><span class="material-symbols-outlined text-[22px]">analytics</span><span class="font-label-caps text-label-caps uppercase mt-0.5">Summary</span></a></div></nav></body></html>

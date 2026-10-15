@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500;600;700&amp;family=Space+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-tertiary-fixed": "#410004", "primary": "#4edea3", "on-primary-container": "#00422b", "on-secondary-container": "#5b3800", "tertiary-fixed": "#ffdad7", "primary-container": "#10b981", "surface-variant": "#31353f", "secondary": "#ffb95f", "surface-container-high": "#262a34", "on-secondary-fixed-variant": "#653e00", "tertiary": "#ffb3ad", "on-tertiary-container": "#79000e", "inverse-primary": "#006c49", "surface-container-low": "#181b25", "primary-fixed-dim": "#4edea3", "tertiary-fixed-dim": "#ffb3ad", "on-primary-fixed-variant": "#005236", "inverse-on-surface": "#2c303a", "secondary-fixed": "#ffddb8", "on-error-container": "#ffdad6", "primary-fixed": "#6ffbbe", "on-secondary-fixed": "#2a1700", "surface-bright": "#353943", "outline": "#86948a", "surface-container-highest": "#31353f", "on-surface-variant": "#bbcabf", "inverse-surface": "#dfe2ef", "on-error": "#690005", "error": "#ffb4ab", "surface-dim": "#0f131c", "on-primary-fixed": "#002113", "on-tertiary-fixed-variant": "#930013", "surface-container": "#1c1f29", "on-secondary": "#472a00", "surface": "#0f131c", "outline-variant": "#3c4a42", "on-surface": "#dfe2ef", "surface-container-lowest": "#0a0e17", "secondary-fixed-dim": "#ffb95f", "error-container": "#93000a", "on-primary": "#003824", "on-background": "#dfe2ef", "tertiary-container": "#ff7a73", "background": "#0f131c", "on-tertiary": "#68000a", "surface-tint": "#4edea3", "secondary-container": "#ee9800" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "margin-mobile": "1rem", "space-xs": "0.25rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "space-md": "1rem", "gutter-mobile": "0.75rem", "gutter": "1rem", "space-xl": "2.5rem", "margin": "1.5rem" }, "fontFamily": { "body-md": ["Inter"], "body-sm": ["Inter"], "metric-display-mobile": ["JetBrains Mono"], "label-caps": ["JetBrains Mono"], "headline-lg-mobile": ["Space Grotesk"], "metric-display": ["JetBrains Mono"], "metric-md": ["JetBrains Mono"], "headline-xl-mobile": ["Space Grotesk"], "headline-xl": ["Space Grotesk"], "headline-lg": ["Space Grotesk"], "headline-md": ["Space Grotesk"], "body-lg": ["Inter"], "metric-sm": ["JetBrains Mono"] }, "fontSize": { "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "metric-display-mobile": ["36px", { "lineHeight": "36px", "letterSpacing": "-0.03em", "fontWeight": "700" }], "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "600" }], "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }], "metric-display": ["48px", { "lineHeight": "48px", "letterSpacing": "-0.04em", "fontWeight": "700" }], "metric-md": ["22px", { "lineHeight": "26px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-xl-mobile": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "metric-sm": ["15px", { "lineHeight": "20px", "fontWeight": "500" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="h-14 px-margin-mobile flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-container-high"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span><span class="font-label-caps text-label-caps text-primary tracking-wider">SYNC</span><span class="font-label-caps text-label-caps text-on-surface-variant">98%</span></div><span class="font-label-caps text-label-caps text-outline">SYS REV 4.2.0</span></div><div class="flex items-center gap-space-sm"><span class="font-headline-md text-headline-md text-on-surface tracking-tight uppercase">Equipment</span><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-14 pb-20 bg-surface px-margin-mobile"><div class="flex flex-col w-full pb-24 space-y-space-md">
+<!-- Friendly Top Guidance Header -->
+<div class="flex flex-col gap-1 pt-1">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">tune</span>
+<span class="font-label-caps text-label-caps text-primary tracking-wider uppercase">Gear Setup</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tight">Gym Equipment</h1>
+<p class="font-body-md text-body-md text-on-surface-variant leading-snug">Turn off gear your gym doesn't have. We'll automatically suggest alternatives.</p>
+</div>
+<!-- Quick Preset Switcher Pills -->
+<div class="flex items-center gap-2 overflow-x-auto pb-1 -mx-margin-mobile px-margin-mobile no-scrollbar" role="tablist">
+<button class="preset-pill flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-primary text-on-primary font-label-caps text-label-caps uppercase transition-all shadow-md shrink-0 active:scale-95" type="button">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span>Commercial Gym (Full)</span>
+</button>
+<button class="preset-pill flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-caps text-label-caps uppercase transition-all shrink-0 active:scale-95" type="button">
+<span class="material-symbols-outlined text-[16px]">garage</span>
+<span>Home / Garage</span>
+</button>
+<button class="preset-pill flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-caps text-label-caps uppercase transition-all shrink-0 active:scale-95" type="button">
+<span class="material-symbols-outlined text-[16px]">luggage</span>
+<span>Hotel / Travel</span>
+</button>
+</div>
+<!-- Friendly Diagnostic / Overview Counters -->
+<div class="grid grid-cols-2 gap-2.5">
+<div class="bg-surface-container rounded-xl p-3 flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Available</span>
+<span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-metric-md text-metric-md text-primary font-bold" id="stat-available">15</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">items</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Ready for routines</span>
+</div>
+<div class="bg-surface-container rounded-xl p-3 flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Excluded</span>
+<span class="material-symbols-outlined text-secondary text-[18px]">alt_route</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-metric-md text-metric-md text-secondary font-bold" id="stat-excluded">4</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">items</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary font-medium mt-0.5">Auto-swapped</span>
+</div>
+</div>
+<!-- Free Weights Section -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">fitness_center</span>
+<h2 class="font-headline-md text-headline-md text-on-surface tracking-tight">Free Weights</h2>
+</div>
+<span class="font-label-caps text-label-caps text-outline">5 ITEMS</span>
+</div>
+<div class="bg-surface-container rounded-xl overflow-hidden flex flex-col divide-y-0">
+<!-- Item 1: Barbell -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Barbell &amp; Plates</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Olympic bar, bumpers &amp; steel collars</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 2: Dumbbells -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Dumbbells</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Pairs 2.5kg up to 50kg</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 3: Squat Rack -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Squat Rack</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Power cage with safety spotter arms</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 4: Bench -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Bench (Flat / Incline)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Adjustable 0°–90° angle</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 5: Preacher Curl (Toggled OFF) -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface-variant font-medium leading-snug">Preacher Curl Bench</span>
+<div class="flex items-center gap-1 mt-1 text-secondary font-body-sm text-body-sm font-medium">
+<span class="material-symbols-outlined text-[15px] shrink-0">turn_right</span>
+<span>Auto-swap: Incline Dumbbell Curl</span>
+</div>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input class="peer sr-only gear-toggle" data-swap="Incline Dumbbell Curl" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-outline rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+</div>
+</section>
+<!-- Cables & Machines Section -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">swap_calls</span>
+<h2 class="font-headline-md text-headline-md text-on-surface tracking-tight">Cables &amp; Machines</h2>
+</div>
+<span class="font-label-caps text-label-caps text-outline">6 ITEMS</span>
+</div>
+<div class="bg-surface-container rounded-xl overflow-hidden flex flex-col">
+<!-- Item 1: Cable Crossover -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Cable Crossover</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Dual adjustable pulleys &amp; handles</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 2: Lat Pulldown -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Lat Pulldown</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Wide bar &amp; neutral grip attachments</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 3: Cable Row -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Cable Row</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Low pulley seated row station</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 4: Hack Squat (Toggled OFF) -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface-variant font-medium leading-snug">Hack Squat</span>
+<div class="flex items-center gap-1 mt-1 text-secondary font-body-sm text-body-sm font-medium">
+<span class="material-symbols-outlined text-[15px] shrink-0">turn_right</span>
+<span>Auto-swap: Leg Press / Belt Squat</span>
+</div>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input class="peer sr-only gear-toggle" data-swap="Leg Press / Belt Squat" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-outline rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 5: Leg Press -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Leg Press</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">45-degree sled system</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+<div class="h-px bg-surface-variant/40 mx-3"></div>
+<!-- Item 6: Leg Extension / Curl -->
+<label class="equipment-row flex items-center justify-between min-h-[56px] px-3.5 py-3 cursor-pointer bg-surface-container hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col pr-3">
+<span class="font-body-lg text-body-lg text-on-surface font-medium leading-snug">Leg Extension / Curl</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Seated pin-select machine</span>
+</div>
+<div class="relative shrink-0 flex items-center">
+<input checked="" class="peer sr-only gear-toggle" data-swap="" type="checkbox"/>
+<div class="w-12 h-7 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-1 top-1 w-5 h-5 bg-on-primary-container rounded-full peer-checked:bg-on-primary peer-checked:translate-x-5 transition-transform duration-200"></div>
+</div>
+</label>
+</div>
+</section>
+<!-- Add Custom Gear Section -->
+<section class="flex flex-col gap-2 pt-1">
+<div class="flex items-center gap-2 px-1">
+<span class="material-symbols-outlined text-primary text-[18px]">add_circle</span>
+<h2 class="font-headline-md text-headline-md text-on-surface tracking-tight">Add Custom Gear</h2>
+</div>
+<div class="bg-surface-container rounded-xl p-3.5 flex flex-col gap-3 shadow-sm">
+<form class="flex gap-2 items-center" id="add-gear-form">
+<div class="relative flex-1">
+<input class="w-full bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md rounded-lg px-3.5 py-2.5 focus:outline-none focus:bg-surface-container-high transition-colors" id="custom-gear-input" placeholder="Add custom equipment..." type="text"/>
+</div>
+<button class="px-4 py-2.5 bg-surface-container-high hover:bg-surface-bright text-primary font-label-caps text-label-caps uppercase rounded-lg transition-all flex items-center gap-1 active:scale-95 shrink-0 min-h-[44px]" type="submit">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>Add</span>
+</button>
+</form>
+<!-- Active Custom Tags -->
+<div class="flex flex-wrap gap-2 pt-1" id="custom-tags-container">
+<div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface font-body-sm text-body-sm">
+<span>Safety Squat Bar</span>
+<button aria-label="Remove Safety Squat Bar" class="tag-remove text-on-surface-variant hover:text-error flex items-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface font-body-sm text-body-sm">
+<span>Trap Bar</span>
+<button aria-label="Remove Trap Bar" class="tag-remove text-on-surface-variant hover:text-error flex items-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Sticky Bottom Confirmation Panel -->
+<div class="sticky bottom-2 w-full pt-2">
+<div class="bg-surface/90 backdrop-blur-md rounded-xl p-2 shadow-xl">
+<button class="w-full min-h-[52px] bg-primary text-on-primary font-headline-md text-headline-md rounded-lg flex items-center justify-center gap-2 transition-all hover:bg-primary-fixed active:scale-[0.98] shadow-md" id="save-btn" type="button">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">check</span>
+<span>Save Equipment Profile</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const toggles = document.querySelectorAll('.gear-toggle');
+    const availableEl = document.getElementById('stat-available');
+    const excludedEl = document.getElementById('stat-excluded');
+    const presetPills = document.querySelectorAll('.preset-pill');
+    const form = document.getElementById('add-gear-form');
+    const input = document.getElementById('custom-gear-input');
+    const tagsContainer = document.getElementById('custom-tags-container');
+    const saveBtn = document.getElementById('save-btn');
+
+    function updateCounts() {
+      let activeCount = 0;
+      let inactiveCount = 0;
+      toggles.forEach(t => {
+        if (t.checked) activeCount++;
+        else inactiveCount++;
+      });
+      // Include custom tags in available total
+      const customTagsCount = tagsContainer.children.length;
+      if (availableEl) availableEl.textContent = (activeCount + customTagsCount);
+      if (excludedEl) excludedEl.textContent = inactiveCount;
+    }
+
+    toggles.forEach(toggle => {
+      toggle.addEventListener('change', () => {
+        const row = toggle.closest('.equipment-row');
+        const title = row ? row.querySelector('.font-body-lg') : null;
+        if (toggle.checked) {
+          if (row) {
+            row.classList.remove('bg-surface-container-low');
+            row.classList.add('bg-surface-container');
+          }
+          if (title) {
+            title.classList.remove('text-on-surface-variant');
+            title.classList.add('text-on-surface');
+          }
+        } else {
+          if (row) {
+            row.classList.remove('bg-surface-container');
+            row.classList.add('bg-surface-container-low');
+          }
+          if (title) {
+            title.classList.remove('text-on-surface');
+            title.classList.add('text-on-surface-variant');
+          }
+        }
+        updateCounts();
+      });
+    });
+
+    presetPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        presetPills.forEach(p => {
+          p.classList.remove('bg-primary', 'text-on-primary', 'shadow-md');
+          p.classList.add('bg-surface-container-high', 'text-on-surface-variant');
+        });
+        pill.classList.remove('bg-surface-container-high', 'text-on-surface-variant');
+        pill.classList.add('bg-primary', 'text-on-primary', 'shadow-md');
+      });
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = input.value.trim();
+      if (!val) return;
+
+      const tag = document.createElement('div');
+      tag.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface font-body-sm text-body-sm animate-fade-in';
+      tag.innerHTML = `<span>${val}</span><button type="button" class="tag-remove text-on-surface-variant hover:text-error flex items-center transition-colors"><span class="material-symbols-outlined text-[16px]">close</span></button>`;
+      
+      tag.querySelector('.tag-remove').addEventListener('click', () => {
+        tag.remove();
+        updateCounts();
+      });
+
+      tagsContainer.appendChild(tag);
+      input.value = '';
+      updateCounts();
+    });
+
+    tagsContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tag-remove');
+      if (btn) {
+        const item = btn.closest('div');
+        if (item) {
+          item.remove();
+          updateCounts();
+        }
+      }
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const originalHTML = saveBtn.innerHTML;
+      saveBtn.innerHTML = `<span class="material-symbols-outlined text-[22px]">task_alt</span><span>Profile Saved!</span>`;
+      saveBtn.classList.remove('bg-primary', 'text-on-primary');
+      saveBtn.classList.add('bg-surface-container-highest', 'text-primary');
+      setTimeout(() => {
+        saveBtn.innerHTML = originalHTML;
+        saveBtn.classList.add('bg-primary', 'text-on-primary');
+        saveBtn.classList.remove('bg-surface-container-highest', 'text-primary');
+      }, 1500);
+    });
+
+    updateCounts();
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.5)]" data-active-classes="text-primary"><div class="flex items-center justify-around h-16 px-space-xs"><a class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="readiness" href="#"><span class="material-symbols-outlined text-[22px]">ecg_heart</span><span class="font-label-caps text-label-caps uppercase mt-0.5">Readiness</span></a><a class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="workout" href="#"><span class="material-symbols-outlined text-[22px]">fitness_center</span><span class="font-label-caps text-label-caps uppercase mt-0.5">Workout</span></a><a class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="equipment" href="#"><span class="material-symbols-outlined text-[22px]">tune</span><span class="font-label-caps text-label-caps uppercase mt-0.5">Equipment</span></a><a class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] px-2 text-on-surface-variant hover:text-on-surface transition-colors" data-path="summary" href="#"><span class="material-symbols-outlined text-[22px]">analytics</span><span class="font-label-caps text-label-caps uppercase mt-0.5">Summary</span></a></div></nav></body></html>
