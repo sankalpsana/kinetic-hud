@@ -20,7 +20,13 @@ jobs:
           node-version: 20
 
       - name: Install Dependencies
+        working-directory: frontend
         run: npm install
 
       - name: Build Next.js Production Bundle
-        run: npm --workspace=frontend run build
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_MODAL_API_URL: ${{ secrets.NEXT_PUBLIC_MODAL_API_URL }}
