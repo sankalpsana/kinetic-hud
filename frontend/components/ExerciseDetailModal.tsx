@@ -73,7 +73,7 @@ export default function ExerciseDetailModal({
         </div>
 
         {/* High-Resolution Movement Demonstration Video/GIF */}
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-white border border-[#262a34] shadow-inner">
+        <div className="relative w-full h-52 sm:h-64 rounded-xl overflow-hidden bg-white border border-[#262a34] shadow-inner shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={mediaSrc}
