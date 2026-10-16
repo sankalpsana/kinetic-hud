@@ -73,12 +73,12 @@ export default function ExerciseDetailModal({
         </div>
 
         {/* High-Resolution Movement Demonstration Video/GIF */}
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-[#0a0e17] border border-[#262a34] shadow-inner">
+        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-white border border-[#262a34] shadow-inner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={mediaSrc}
             alt={exercise.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
           />
           <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm text-[10px] font-metric text-[#4edea3] font-bold">
             LIVE FORM DEMO

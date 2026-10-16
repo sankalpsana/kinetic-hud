@@ -60,7 +60,7 @@ export default function ExerciseMediaVisual({
             setHasVideoError(true);
             setIsLoaded(false);
           }}
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+          className={`w-full h-full object-contain bg-white transition-all duration-500 group-hover:scale-105 ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
         />
@@ -71,7 +71,7 @@ export default function ExerciseMediaVisual({
           alt={name}
           loading="lazy"
           onLoad={() => setIsLoaded(true)}
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+          className={`w-full h-full object-contain bg-white transition-all duration-500 group-hover:scale-105 ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
         />
