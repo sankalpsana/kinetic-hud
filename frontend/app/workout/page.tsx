@@ -40,6 +40,7 @@ function WorkoutContent() {
   const timeParam = Number(searchParams.get('time')) || 45;
   const energyParam = Number(searchParams.get('energy')) || 4;
   const sorenessParam = (searchParams.get('soreness') || '').split(',').filter(Boolean);
+  const sorenessTextParam = searchParams.get('soreness_text') || '';
   const splitParam = searchParams.get('split') || 'Pull Day A';
 
   // 2-Stage Flow State: 'staging' | 'active'
@@ -82,6 +83,7 @@ function WorkoutContent() {
             time_minutes: timeParam,
             energy_score: energyParam,
             soreness_flags: sorenessParam,
+            soreness_text: sorenessTextParam,
             split_name: splitParam,
           }),
         });
@@ -100,7 +102,7 @@ function WorkoutContent() {
       }
     }
     loadRoutine();
-  }, [timeParam, energyParam, splitParam]);
+  }, [timeParam, energyParam, splitParam, sorenessTextParam]);
 
   // Rest timer countdown - only runs when explicitly started
   useEffect(() => {
@@ -245,7 +247,7 @@ function WorkoutContent() {
           split_type: currentExercise.primary_split ? `${currentExercise.primary_split}_${currentExercise.split_rotation || 'A'}` : 'PULL_A',
           duration_minutes: elapsedMinutes,
           energy_score: energyParam,
-          soreness_flags: sorenessParam,
+          soreness_flags: sorenessTextParam ? [sorenessTextParam] : sorenessParam,
           sets: setsToLog,
         }),
       });

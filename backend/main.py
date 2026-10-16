@@ -44,7 +44,8 @@ class RoutineGenerateRequest(BaseModel):
     split_type: Optional[str] = None # e.g. "PULL_A", "PULL_B", "PUSH_A", "PUSH_B", "LEGS_A", "LEGS_B"
     time_minutes: int = Field(default=45, ge=15, le=120)
     energy_score: int = Field(default=4, ge=1, le=5)
-    soreness_flags: List[str] = Field(default_factory=list) # e.g. ["lower_back", "shoulder"]
+    soreness_flags: List[str] = Field(default_factory=list) # legacy list
+    soreness_text: Optional[str] = "" # Natural language text e.g. "Right front delt sore, lower back tight"
 
 class PrescribedExercise(BaseModel):
     exercise_id: str
@@ -270,76 +271,168 @@ def generate_routine(req: RoutineGenerateRequest):
         available_tags = {"barbell", "dumbbells", "squat_rack", "adjustable_bench", "cable_crossover", "lat_pulldown", "cable_row", "leg_press", "leg_extension_curl", "hack_squat", "smith_machine"}
 
     adjustments = []
-    flags_lower = [f.lower() for f in req.soreness_flags]
-    has_lower_back = any("back" in f or "spine" in f or "lumbar" in f for f in flags_lower)
-    has_shoulder = any("shoulder" in f for f in flags_lower)
 
-    # Biomechanical Substitution
+    # 1. Natural Language Soreness Parser (Gemini Flash + Robust Keyword Extraction)
+    exclusion_tags = [f.lower().strip() for f in req.soreness_flags]
+    soreness_notes = []
+
+    if req.soreness_text and req.soreness_text.strip():
+        raw_text = req.soreness_text.strip()
+        text_lower = raw_text.lower()
+
+        # Deterministic keyword mapping (instant and reliable)
+        if any(w in text_lower for w in ["back", "lumbar", "spine", "l5", "s1", "deadlift", "erector", "lower back"]):
+            if "axial_spine" not in exclusion_tags:
+                exclusion_tags.append("axial_spine")
+            soreness_notes.append("Lumbar spine / axial loading protection")
+
+        if any(w in text_lower for w in ["front delt", "anterior delt"]):
+            if "anterior_delt_shear" not in exclusion_tags:
+                exclusion_tags.append("anterior_delt_shear")
+            soreness_notes.append("Anterior delt shear offloaded")
+
+        if any(w in text_lower for w in ["shoulder", "rotator", "ac joint", "overhead", "clicks"]):
+            if "shoulder" not in exclusion_tags:
+                exclusion_tags.append("shoulder")
+            soreness_notes.append("Shoulder impingement protection")
+
+        if any(w in text_lower for w in ["knee", "patella", "tendonitis", "quad tendon"]):
+            for t in ["patellar_tendon", "knee_shear"]:
+                if t not in exclusion_tags:
+                    exclusion_tags.append(t)
+            soreness_notes.append("Patellar tendon & knee shearing offloaded")
+
+        if any(w in text_lower for w in ["elbow", "triceps tendon", "golfer", "tennis"]):
+            if "elbow_flexor" not in exclusion_tags:
+                exclusion_tags.append("elbow_flexor")
+            soreness_notes.append("Elbow tendon offloaded")
+
+        if any(w in text_lower for w in ["biceps", "bicep tendon"]):
+            if "biceps_tendon" not in exclusion_tags:
+                exclusion_tags.append("biceps_tendon")
+            soreness_notes.append("Biceps tendon offloaded")
+
+        if any(w in text_lower for w in ["groin", "adductor", "hip pinch", "hip impingement"]):
+            if "groin" not in exclusion_tags:
+                exclusion_tags.append("groin")
+            soreness_notes.append("Groin/hip impingement protection")
+
+        # Gemini Flash structured extraction for subtle athletic cues
+        if GEMINI_API_KEY:
+            try:
+                from google import genai
+                client = genai.Client(api_key=GEMINI_API_KEY)
+                prompt = f"""You are an elite sports biomechanist. The athlete reports the following soreness:
+"{raw_text}"
+
+Select matching exclusion flags from this list ONLY:
+["axial_spine", "anterior_delt_shear", "shoulder", "patellar_tendon", "knee_shear", "elbow_flexor", "biceps_tendon", "groin"]
+
+Respond with a JSON array of strings, e.g. ["axial_spine", "shoulder"]. If none apply, respond []."""
+                resp = client.models.generate_content(
+                    model="gemini-3.5-flash-lite",
+                    contents=prompt,
+                    config=dict(response_mime_type="application/json")
+                )
+                parsed_flags = json.loads(resp.text)
+                if isinstance(parsed_flags, list):
+                    for pf in parsed_flags:
+                        clean_pf = str(pf).strip().lower()
+                        if clean_pf not in exclusion_tags:
+                            exclusion_tags.append(clean_pf)
+            except Exception as e:
+                print(f"Gemini soreness parse note: {e}")
+
+    if soreness_notes:
+        adjustments.append("Soreness Auto-Regulation: " + ", ".join(soreness_notes))
+
+    # 2. Biomechanical Substitution & Equipment Availability (Strict primary_split isolation)
     filtered = []
     for ex in candidate_exercises:
-        stress_flags = ex.get("joint_stress_flags") or []
+        stress_flags = [str(sf).lower() for sf in (ex.get("joint_stress_flags") or [])]
         eq_tag = ex.get("equipment_tag", "")
-        
-        # Lower back / axial spine check
-        if has_lower_back and "axial_spine" in stress_flags:
+        conflict_flags = [f for f in stress_flags if f in exclusion_tags]
+
+        # Biomechanical joint stress substitution
+        if conflict_flags:
+            primary_conflict = conflict_flags[0]
+            # Fetch safe Tier S or A substitutes strictly within the same primary_split
             sub_res = supabase.table("exercises") \
                 .select("*") \
                 .eq("primary_split", primary_split) \
-                .eq("stability_tier", "S") \
+                .in_("stability_tier", ["S", "A"]) \
                 .execute()
-            sub = next((s for s in (sub_res.data or []) if "axial_spine" not in (s.get("joint_stress_flags") or [])), None)
-            if sub and sub["id"] != ex["id"]:
+            
+            sub = next((
+                s for s in (sub_res.data or [])
+                if s["id"] != ex["id"] and not any(str(sf).lower() in exclusion_tags for sf in (s.get("joint_stress_flags") or []))
+            ), None)
+
+            if sub:
                 ex_copy = dict(sub)
-                ex_copy["substitution_applied"] = f"Axial Spine Offload: Replaced {ex['canonical_name']} with {sub['canonical_name']} to eliminate lumbar shear stress."
-                adjustments.append(ex_copy["substitution_applied"])
+                applied_msg = f"Biomechanical Substitution: Replaced {ex['canonical_name']} with {sub['canonical_name']} to eliminate {primary_conflict.replace('_', ' ')} stress."
+                ex_copy["substitution_applied"] = applied_msg
+                adjustments.append(applied_msg)
                 filtered.append(ex_copy)
                 continue
             else:
-                adjustments.append(f"Axial Spine Warning: {ex['canonical_name']} omitted due to lumbar soreness.")
-                continue
-
-        # Shoulder impingement check
-        if has_shoulder and "shoulder" in stress_flags:
-            sub_res = supabase.table("exercises") \
-                .select("*") \
-                .eq("primary_split", primary_split) \
-                .eq("stability_tier", "S") \
-                .execute()
-            sub = next((s for s in (sub_res.data or []) if "shoulder" not in (s.get("joint_stress_flags") or [])), None)
-            if sub:
-                ex_copy = dict(sub)
-                ex_copy["substitution_applied"] = f"Shoulder Protection: Replaced {ex['canonical_name']} with {sub['canonical_name']} in scapular plane."
-                adjustments.append(ex_copy["substitution_applied"])
-                filtered.append(ex_copy)
+                adjustments.append(f"Joint Offload: {ex['canonical_name']} omitted due to {primary_conflict.replace('_', ' ')} soreness.")
                 continue
 
         # Equipment availability check
         if eq_tag and eq_tag not in available_tags:
             sub_res = supabase.table("exercises").select("*").eq("primary_split", primary_split).execute()
-            sub = next((s for s in (sub_res.data or []) if s.get("equipment_tag") in available_tags and s["id"] != ex["id"]), None)
+            sub = next((
+                s for s in (sub_res.data or [])
+                if s.get("equipment_tag") in available_tags and s["id"] != ex["id"] and not any(str(sf).lower() in exclusion_tags for sf in (s.get("joint_stress_flags") or []))
+            ), None)
             if sub:
                 ex_copy = dict(sub)
-                ex_copy["substitution_applied"] = f"Equipment Auto-Swap: {ex['canonical_name']} ({eq_tag} unavailable) replaced with {sub['canonical_name']}."
-                adjustments.append(ex_copy["substitution_applied"])
+                applied_msg = f"Equipment Auto-Swap: {ex['canonical_name']} ({eq_tag} unavailable) replaced with {sub['canonical_name']}."
+                ex_copy["substitution_applied"] = applied_msg
+                adjustments.append(applied_msg)
                 filtered.append(ex_copy)
                 continue
 
         filtered.append(ex)
 
-    # 4. Volume Prescription Rule: Strictly 2–3 hard working sets (0–2 RIR)
-    max_exercises = 4 if req.time_minutes <= 45 else 5
-    selected_exercises = filtered[:max_exercises]
+    # Deduplicate candidate exercises while preserving order
+    seen_ids = set()
+    deduped = []
+    for ex in filtered:
+        if ex["id"] not in seen_ids:
+            seen_ids.add(ex["id"])
+            deduped.append(ex)
 
-    if req.energy_score <= 2:
-        energy_mode = "Deload Mode (0–1 RIR reserve, 2 sets prescribed)"
+    # 3. Dynamic Time-Volume Scaling Engine
+    # <= 35 min: 3–4 exercises (2 sets each, antagonist supersets)
+    # 40–50 min: 4–5 exercises (2–3 sets each)
+    # 55–70 min: 5–6 exercises (complete regional volume, e.g., Quads + Hams + Calves + Core)
+    # >= 75 min: 6–7 exercises (full Jeff Nippard protocol with adductors and specialized isolation finishers)
+    if req.time_minutes <= 35:
+        max_exercises = 3 if req.time_minutes < 30 else 4
         sets_per_exercise = 2
-        adjustments.append("Deload Mode: 2 hard working sets prescribed to avoid nervous fatigue.")
-    elif req.energy_score >= 4:
-        energy_mode = "High Output Intensity (0–1 RIR, 3 working sets)"
-        sets_per_exercise = 3
+    elif req.time_minutes <= 50:
+        max_exercises = 4 if req.time_minutes <= 45 else 5
+        sets_per_exercise = 2 if req.energy_score <= 2 else 3
+    elif req.time_minutes <= 70:
+        max_exercises = 5 if req.time_minutes <= 60 else 6
+        sets_per_exercise = 2 if req.energy_score <= 2 else 3
     else:
-        energy_mode = "Standard Hypertrophy Target (1–2 RIR, 3 sets)"
-        sets_per_exercise = 3
+        # 75+ min: Return full 6–7 movements
+        max_exercises = 7
+        sets_per_exercise = 2 if req.energy_score <= 2 else 3
+
+    selected_exercises = deduped[:max_exercises]
+
+    # Adjust energy mode descriptor
+    if req.energy_score <= 2:
+        energy_mode = f"Deload Protocol (0–1 RIR reserve, {sets_per_exercise} sets prescribed)"
+        adjustments.append("Deload Mode: Reduced volume prescribed to avoid autonomic fatigue.")
+    elif req.energy_score >= 4:
+        energy_mode = f"High Output Intensity (0–1 RIR, {sets_per_exercise} working sets)"
+    else:
+        energy_mode = f"Standard Hypertrophy Target (1–2 RIR, {sets_per_exercise} sets)"
 
     # 5. Fetch past loads from set_logs to pre-fill target_weight_kg
     ex_ids = [ex["id"] for ex in selected_exercises]

@@ -17,17 +17,28 @@ export default function ReadinessPage() {
 
   const [timeMinutes, setTimeMinutes] = useState<number>(45);
   const [energyScore, setEnergyScore] = useState<number>(4);
-  const [soreSpots, setSoreSpots] = useState<SoreSpot[]>([
-    { id: 'lower-back', label: 'Lower Back', protected: true },
-    { id: 'shoulder', label: 'Right Shoulder', protected: true },
-    { id: 'knees', label: 'Knees', protected: false },
-    { id: 'elbows', label: 'Elbows', protected: false },
-    { id: 'chest', label: 'Chest', protected: false },
-    { id: 'hamstrings', label: 'Hamstrings', protected: false },
-  ]);
+  const [sorenessText, setSorenessText] = useState<string>('');
   const [splitName, setSplitName] = useState<string>('Pull Day A');
   const [estimatedFinish, setEstimatedFinish] = useState<string>('--:--');
   const [lastSessionInfo, setLastSessionInfo] = useState<string | null>(null);
+
+  // Dynamic exercise count description
+  const getExerciseCountBadge = (mins: number) => {
+    if (mins <= 35) return '3–4 exercises (Express)';
+    if (mins <= 50) return mins <= 45 ? '4–5 exercises (Standard)' : '5 exercises';
+    if (mins <= 70) return mins <= 60 ? '5–6 exercises (Complete)' : '6 exercises';
+    return '6–7 exercises (Maximum Hypertrophy)';
+  };
+
+  const appendQuickTag = (tag: string) => {
+    const cleanTag = tag.replace(/^\+\s*/, '');
+    setSorenessText((prev) => {
+      const trimmed = prev.trim();
+      if (!trimmed) return cleanTag;
+      if (trimmed.toLowerCase().includes(cleanTag.toLowerCase())) return prev;
+      return `${trimmed}, ${cleanTag}`;
+    });
+  };
 
   // Fetch last completed session from Supabase to auto-suggest next split
   useEffect(() => {
@@ -74,15 +85,6 @@ export default function ReadinessPage() {
     );
   }, [timeMinutes]);
 
-  // Toggle soreness
-  const toggleSpot = (id: string) => {
-    setSoreSpots((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, protected: !s.protected } : s))
-    );
-  };
-
-  const protectedCount = soreSpots.filter((s) => s.protected).length;
-
   // Energy feedback text
   const getEnergyFeedback = () => {
     switch (energyScore) {
@@ -104,36 +106,38 @@ export default function ReadinessPage() {
   // Dynamic preview text
   const getAdjustmentPreview = () => {
     const list: string[] = [];
-    const hasBack = soreSpots.find((s) => s.id === 'lower-back')?.protected;
-    const hasShoulder = soreSpots.find((s) => s.id === 'shoulder')?.protected;
-    const hasKnees = soreSpots.find((s) => s.id === 'knees')?.protected;
+    const textLower = sorenessText.toLowerCase();
 
-    if (hasBack) {
-      list.push('Deadlifts/Barbell Rows swapped for Chest-Supported Rows to offload axial spine');
+    if (textLower.includes('back') || textLower.includes('spine') || textLower.includes('deadlift') || textLower.includes('lumbar')) {
+      list.push('Spinal axial load swapped for chest-supported / machine variations');
     }
-    if (hasShoulder) {
-      list.push('Wide presses swapped for neutral-grip dumbbell presses in scapular plane');
+    if (textLower.includes('shoulder') || textLower.includes('rotator') || textLower.includes('click') || textLower.includes('front delt')) {
+      list.push('Wide overhead pressing substituted for scapular plane neutral dumbbell / cable movements');
     }
-    if (hasKnees) {
+    if (textLower.includes('knee') || textLower.includes('patella') || textLower.includes('squat')) {
       list.push('Quad knee-shearing deep squats swapped for high-footplate leg press');
     }
+    if (textLower.includes('elbow') || textLower.includes('tricep') || textLower.includes('bicep')) {
+      list.push('Joint-sparing cable variations with lengthened resistance profile active');
+    }
 
-    if (timeMinutes <= 30) {
-      list.push('Working sets compressed to 2 per exercise (antagonist pairing active)');
+    if (timeMinutes <= 35) {
+      list.push('Express protocol: 3–4 movements with 2 hard working sets');
+    } else if (timeMinutes >= 75) {
+      list.push('Full 6–7 exercise Nippard hypertrophy protocol with specialized isolation finishers');
     }
 
     if (list.length === 0) {
-      return 'No physiological red flags reported. Standard high-velocity hypertrophy sequence ready.';
+      return `Targeting ${getExerciseCountBadge(timeMinutes)} across ${splitName}. Standard scientific hypertrophy volume ready.`;
     }
     return list.join(' • ');
   };
 
   const handleStartWorkout = () => {
-    const activeSoreness = soreSpots.filter((s) => s.protected).map((s) => s.id);
     const params = new URLSearchParams({
       time: timeMinutes.toString(),
       energy: energyScore.toString(),
-      soreness: activeSoreness.join(','),
+      soreness_text: sorenessText.trim(),
       split: splitName,
     });
     router.push(`/workout?${params.toString()}`);
@@ -194,9 +198,14 @@ export default function ReadinessPage() {
                   How much time do you have?
                 </h2>
               </div>
-              <span className="px-2.5 py-0.5 rounded font-metric text-xs bg-[#4edea3] text-[#003824] font-bold">
-                {timeMinutes} MIN
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded font-metric text-[11px] bg-[#262a34] text-[#4edea3] border border-[#3c4a42]/60 font-semibold">
+                  {getExerciseCountBadge(timeMinutes)}
+                </span>
+                <span className="px-2.5 py-0.5 rounded font-metric text-xs bg-[#4edea3] text-[#003824] font-bold">
+                  {timeMinutes} MIN
+                </span>
+              </div>
             </div>
 
             {/* Time Preset Cards Grid */}
@@ -249,9 +258,9 @@ export default function ReadinessPage() {
                 className="w-full h-1.5 bg-[#31353f] rounded-lg appearance-none cursor-pointer accent-[#4edea3]"
               />
               <div className="flex justify-between items-center text-[#86948a] font-metric text-[10px] tracking-wider uppercase">
-                <span>30m Express</span>
-                <span>60m Optimal</span>
-                <span>90m Overdrive</span>
+                <span>30m Express (3–4 ex)</span>
+                <span>60m Complete (5–6 ex)</span>
+                <span>75m+ Nippard Hypertrophy (6–7 ex)</span>
               </div>
             </div>
           </section>
@@ -305,54 +314,75 @@ export default function ReadinessPage() {
             </div>
           </section>
 
-          {/* Section 3: Soreness & Problem Areas */}
+          {/* Section 3: Natural Language Soreness & Problem Areas */}
           <section className="flex flex-col space-y-3 bg-[#181b25] p-4 rounded-xl border border-[#1F2937] shadow-md">
             <div className="flex flex-col space-y-0.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#ffb95f] text-[20px]">healing</span>
                   <h2 className="font-headline text-[16px] text-[#dfe2ef] font-semibold">
-                    Any sore spots today?
+                    Any soreness or joint fatigue?
                   </h2>
                 </div>
-                {protectedCount > 0 && (
+                {sorenessText.trim() && (
                   <span className="px-2 py-0.5 rounded text-[10px] font-metric font-bold bg-[#ee9800]/20 text-[#ffb95f] border border-[#ee9800]/40">
-                    {protectedCount} PROTECTED
+                    AUTO-FILTER ACTIVE
                   </span>
                 )}
               </div>
               <p className="font-body text-[13px] text-[#bbcabf]">
-                We&apos;ll swap exercises to protect flagged joints
+                Describe any tight joints or strains; AI will adapt movements in real-time
               </p>
             </div>
 
-            {/* Chips / Grid List */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              {soreSpots.map((spot) => {
-                const isProtected = spot.protected;
-                return (
+            {/* Natural Language Soreness Input */}
+            <div className="flex flex-col space-y-2">
+              <div className="relative">
+                <textarea
+                  value={sorenessText}
+                  onChange={(e) => setSorenessText(e.target.value)}
+                  placeholder="e.g., Lower back tight from deadlifts, right shoulder clicks on overhead press"
+                  rows={3}
+                  className="w-full bg-[#1c1f29] border border-[#1F2937] focus:border-[#4edea3] focus:ring-1 focus:ring-[#4edea3] rounded-lg p-3 text-[13px] text-[#dfe2ef] placeholder-[#86948a] font-body resize-none transition-all outline-none"
+                />
+                {sorenessText && (
                   <button
-                    key={spot.id}
                     type="button"
-                    onClick={() => toggleSpot(spot.id)}
-                    className={`flex items-center justify-between p-3 rounded-lg text-left transition-all border ${
-                      isProtected
-                        ? 'bg-[#ee9800]/15 text-[#ffb95f] border-[#ee9800]/50 shadow-sm'
-                        : 'bg-[#1c1f29] hover:bg-[#262a34] text-[#dfe2ef] border-[#1F2937]'
-                    }`}
+                    onClick={() => setSorenessText('')}
+                    className="absolute top-2 right-2 text-[#86948a] hover:text-[#dfe2ef] p-1 rounded-md"
+                    title="Clear text"
                   >
-                    <div className="flex flex-col">
-                      <span className="font-body text-[14px] font-semibold">{spot.label}</span>
-                      <span className="font-metric text-[10px] mt-0.5 opacity-80 uppercase tracking-wider">
-                        {isProtected ? 'Will protect' : 'Ready'}
-                      </span>
-                    </div>
-                    <span className="material-symbols-outlined text-[18px]">
-                      {isProtected ? 'check_circle' : 'add_circle_outline'}
-                    </span>
+                    <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
-                );
-              })}
+                )}
+              </div>
+
+              {/* One-tap Quick Tag Shortcuts */}
+              <div className="flex flex-col space-y-1.5 pt-1">
+                <span className="font-metric text-[10px] text-[#86948a] uppercase tracking-wider">
+                  Quick-Add Soreness Tags
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    '+ Lower Back',
+                    '+ Right Shoulder',
+                    '+ Knees / Patella',
+                    '+ Elbows',
+                    '+ Biceps Tendon',
+                    '+ Tight Hamstrings',
+                    '+ Groin / Adductors',
+                  ].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => appendQuickTag(tag)}
+                      className="px-2.5 py-1 rounded-full text-xs font-metric font-medium bg-[#262a34] hover:bg-[#31353f] text-[#4edea3] border border-[#3c4a42]/60 active:scale-95 transition-all"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
 

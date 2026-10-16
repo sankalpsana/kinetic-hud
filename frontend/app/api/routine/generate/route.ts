@@ -34,6 +34,7 @@ export async function POST(request: Request) {
       time_minutes = 45,
       energy_score = 4,
       soreness_flags = [],
+      soreness_text = '',
     } = body;
 
     // 1. Determine target split type & rotation
@@ -110,47 +111,74 @@ export async function POST(request: Request) {
 
     const candidateExercises: Exercise[] = exData || [];
     const adjustments: string[] = [];
-    const flagsLower = (soreness_flags as string[]).map((f) => f.toLowerCase());
-    const hasLowerBack = flagsLower.some((f) => f.includes('back') || f.includes('spine') || f.includes('lumbar'));
-    const hasShoulder = flagsLower.some((f) => f.includes('shoulder'));
 
-    // Biomechanical substitution
+    // Natural Language Soreness Parser
+    const exclusionTags: string[] = (soreness_flags as string[]).map((f) => f.toLowerCase().trim());
+    const sorenessNotes: string[] = [];
+
+    if (soreness_text && typeof soreness_text === 'string' && soreness_text.trim()) {
+      const textLower = soreness_text.toLowerCase().trim();
+      if (['back', 'lumbar', 'spine', 'l5', 's1', 'deadlift', 'erector', 'lower back'].some((w) => textLower.includes(w))) {
+        if (!exclusionTags.includes('axial_spine')) exclusionTags.push('axial_spine');
+        sorenessNotes.push('Lumbar spine / axial loading protection');
+      }
+      if (['front delt', 'anterior delt'].some((w) => textLower.includes(w))) {
+        if (!exclusionTags.includes('anterior_delt_shear')) exclusionTags.push('anterior_delt_shear');
+        sorenessNotes.push('Anterior delt shear offloaded');
+      }
+      if (['shoulder', 'rotator', 'ac joint', 'overhead', 'clicks'].some((w) => textLower.includes(w))) {
+        if (!exclusionTags.includes('shoulder')) exclusionTags.push('shoulder');
+        sorenessNotes.push('Shoulder impingement protection');
+      }
+      if (['knee', 'patella', 'tendonitis', 'quad tendon'].some((w) => textLower.includes(w))) {
+        if (!exclusionTags.includes('patellar_tendon')) exclusionTags.push('patellar_tendon');
+        if (!exclusionTags.includes('knee_shear')) exclusionTags.push('knee_shear');
+        sorenessNotes.push('Patellar tendon & knee shearing offloaded');
+      }
+      if (['elbow', 'triceps tendon', 'golfer', 'tennis'].some((w) => textLower.includes(w))) {
+        if (!exclusionTags.includes('elbow_flexor')) exclusionTags.push('elbow_flexor');
+        sorenessNotes.push('Elbow tendon offloaded');
+      }
+      if (['biceps', 'bicep tendon'].some((w) => textLower.includes(w))) {
+        if (!exclusionTags.includes('biceps_tendon')) exclusionTags.push('biceps_tendon');
+        sorenessNotes.push('Biceps tendon offloaded');
+      }
+      if (['groin', 'adductor', 'hip pinch', 'hip impingement'].some((w) => textLower.includes(w))) {
+        if (!exclusionTags.includes('groin')) exclusionTags.push('groin');
+        sorenessNotes.push('Groin/hip impingement protection');
+      }
+    }
+
+    if (sorenessNotes.length > 0) {
+      adjustments.push(`Soreness Auto-Regulation: ${sorenessNotes.join(', ')}`);
+    }
+
+    // Biomechanical substitution (Strictly within the same primary_split)
     const filtered: Array<Exercise & { substitution_applied?: string }> = [];
     for (const ex of candidateExercises) {
-      const stressFlags = ex.joint_stress_flags || [];
+      const stressFlags = (ex.joint_stress_flags || []).map((s) => s.toLowerCase());
       const eqTag = ex.equipment_tag;
+      const conflicts = stressFlags.filter((sf) => exclusionTags.includes(sf));
 
-      if (hasLowerBack && stressFlags.includes('axial_spine')) {
+      if (conflicts.length > 0) {
+        const primaryConflict = conflicts[0];
         const { data: subs } = await supabase
           .from('exercises')
           .select('*')
           .eq('primary_split', primarySplit)
-          .eq('stability_tier', 'S');
+          .in('stability_tier', ['S', 'A']);
 
-        const safeSub = (subs || []).find((s) => !(s.joint_stress_flags || []).includes('axial_spine'));
-        if (safeSub && safeSub.id !== ex.id) {
-          const applied = `Axial Spine Offload: Replaced ${ex.canonical_name} with ${safeSub.canonical_name} to eliminate lumbar shearing.`;
+        const safeSub = (subs || []).find(
+          (s) => s.id !== ex.id && !(s.joint_stress_flags || []).some((sf: string) => exclusionTags.includes(sf.toLowerCase()))
+        );
+
+        if (safeSub) {
+          const applied = `Biomechanical Substitution: Replaced ${ex.canonical_name} with ${safeSub.canonical_name} to eliminate ${primaryConflict.replace(/_/g, ' ')} stress.`;
           adjustments.push(applied);
           filtered.push({ ...safeSub, substitution_applied: applied });
           continue;
         } else {
-          adjustments.push(`Axial Spine Warning: ${ex.canonical_name} omitted due to lumbar soreness.`);
-          continue;
-        }
-      }
-
-      if (hasShoulder && stressFlags.includes('shoulder')) {
-        const { data: subs } = await supabase
-          .from('exercises')
-          .select('*')
-          .eq('primary_split', primarySplit)
-          .eq('stability_tier', 'S');
-
-        const safeSub = (subs || []).find((s) => !(s.joint_stress_flags || []).includes('shoulder'));
-        if (safeSub) {
-          const applied = `Shoulder Protection: Replaced ${ex.canonical_name} with ${safeSub.canonical_name} in scapular plane.`;
-          adjustments.push(applied);
-          filtered.push({ ...safeSub, substitution_applied: applied });
+          adjustments.push(`Joint Offload: ${ex.canonical_name} omitted due to ${primaryConflict.replace(/_/g, ' ')} soreness.`);
           continue;
         }
       }
@@ -161,7 +189,9 @@ export async function POST(request: Request) {
           .select('*')
           .eq('primary_split', primarySplit);
 
-        const availableSub = (subs || []).find((s) => availableTags.has(s.equipment_tag) && s.id !== ex.id);
+        const availableSub = (subs || []).find(
+          (s) => availableTags.has(s.equipment_tag) && s.id !== ex.id && !(s.joint_stress_flags || []).some((sf: string) => exclusionTags.includes(sf.toLowerCase()))
+        );
         if (availableSub) {
           const applied = `Equipment Auto-Swap: ${ex.canonical_name} (${eqTag} unavailable) replaced with ${availableSub.canonical_name}.`;
           adjustments.push(applied);
@@ -173,20 +203,46 @@ export async function POST(request: Request) {
       filtered.push(ex);
     }
 
-    // 4. Volume Prescription Rule: Strictly 2–3 hard working sets (0–2 RIR)
-    const maxExercises = time_minutes <= 45 ? 4 : 5;
-    const selectedExercises = filtered.slice(0, maxExercises);
+    // Deduplicate candidate exercises while preserving order
+    const seenIds = new Set<string>();
+    const deduped: Array<Exercise & { substitution_applied?: string }> = [];
+    for (const ex of filtered) {
+      if (!seenIds.has(ex.id)) {
+        seenIds.add(ex.id);
+        deduped.push(ex);
+      }
+    }
 
-    let energyMode = 'Standard Hypertrophy Target (1–2 RIR, 3 sets)';
+    // 4. Dynamic Time Scaling for Exercise and Set Counts
+    // <= 35 min: 3–4 exercises (2 sets each)
+    // 40–50 min: 4–5 exercises (2–3 sets each)
+    // 55–70 min: 5–6 exercises (2–3 sets each)
+    // >= 75 min: 6–7 exercises (full Jeff Nippard protocol)
+    let maxExercises = 5;
     let setsPerExercise = 3;
 
-    if (energy_score <= 2) {
-      energyMode = 'Deload Mode (0–1 RIR reserve, 2 sets prescribed)';
+    if (time_minutes <= 35) {
+      maxExercises = time_minutes < 30 ? 3 : 4;
       setsPerExercise = 2;
-      adjustments.push('Deload Mode: 2 hard working sets prescribed to avoid nervous fatigue.');
+    } else if (time_minutes <= 50) {
+      maxExercises = time_minutes <= 45 ? 4 : 5;
+      setsPerExercise = energy_score <= 2 ? 2 : 3;
+    } else if (time_minutes <= 70) {
+      maxExercises = time_minutes <= 60 ? 5 : 6;
+      setsPerExercise = energy_score <= 2 ? 2 : 3;
+    } else {
+      maxExercises = 7;
+      setsPerExercise = energy_score <= 2 ? 2 : 3;
+    }
+
+    const selectedExercises = deduped.slice(0, maxExercises);
+
+    let energyMode = `Standard Hypertrophy Target (1–2 RIR, ${setsPerExercise} sets)`;
+    if (energy_score <= 2) {
+      energyMode = `Deload Mode (0–1 RIR reserve, ${setsPerExercise} sets prescribed)`;
+      adjustments.push('Deload Mode: Reduced working sets prescribed to avoid nervous fatigue.');
     } else if (energy_score >= 4) {
-      energyMode = 'High Output Intensity (0–1 RIR, 3 working sets)';
-      setsPerExercise = 3;
+      energyMode = `High Output Intensity (0–1 RIR, ${setsPerExercise} working sets)`;
     }
 
     // 5. Query user's past weights from set_logs
