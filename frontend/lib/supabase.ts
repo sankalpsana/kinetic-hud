@@ -7,11 +7,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000001';
 
+export type EquipmentCategory = 'free_weights' | 'cables' | 'machines' | 'accessories';
+
 export interface UserEquipment {
   user_id: string;
   equipment_tag: string;
+  category: EquipmentCategory;
+  display_name: string;
+  image_url?: string | null;
   is_available: boolean;
-  fallback_recommendation: string | null;
+  fallback_recommendation?: string | null;
+  resistance_curve?: string | null;
+  common_gym_brands?: string | null;
 }
 
 export interface Exercise {

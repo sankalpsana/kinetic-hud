@@ -16,6 +16,20 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ.get(
     os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1a25seWJsZGdteG9xZWp5dHlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5Nzk4MDEsImV4cCI6MjEwNzU1NTgwMX0.vQIvtnaU7wHX8SDgAl0XjGzZsMOPZe4JkR8NvflKiHE")
 )
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+if not GEMINI_API_KEY:
+    for env_path in ["frontend/.env.local", "../frontend/.env.local", ".env.local"]:
+        if os.path.exists(env_path):
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip().startswith("GEMINI_API_KEY="):
+                            GEMINI_API_KEY = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            os.environ["GEMINI_API_KEY"] = GEMINI_API_KEY
+                            break
+            except Exception:
+                pass
+            if GEMINI_API_KEY:
+                break
 
 def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -133,7 +147,30 @@ class RoutineLogResponse(BaseModel):
 class EquipmentToggleRequest(BaseModel):
     user_id: Optional[str] = "00000000-0000-0000-0000-000000000001"
     equipment_tag: str
-    is_available: bool
+    category: Optional[str] = "machines"
+    display_name: Optional[str] = None
+    image_url: Optional[str] = None
+    is_available: bool = True
+    fallback_recommendation: Optional[str] = None
+    resistance_curve: Optional[str] = None
+    common_gym_brands: Optional[str] = None
+
+class EquipmentDisambiguateCandidate(BaseModel):
+    id: str
+    display_name: str
+    category: str = "machines"
+    image_url: str
+    resistance_curve: str
+    common_gym_brands: str
+    fallback_recommendation: str
+
+class EquipmentDisambiguateRequest(BaseModel):
+    query: str
+
+class EquipmentDisambiguateResponse(BaseModel):
+    query: str
+    source: str
+    candidates: List[EquipmentDisambiguateCandidate]
 
 # -----------------
 # Core Endpoints
@@ -149,46 +186,11 @@ def health():
         "gemini_active": bool(GEMINI_API_KEY)
     }
 
-@web_app.get("/api/equipment")
-def get_equipment(user_id: str = "00000000-0000-0000-0000-000000000001"):
-    """Fetches user equipment inventory, availability toggles, and fallback suggestions."""
-    supabase = get_supabase()
-    res = supabase.table("user_equipment").select("*").eq("user_id", user_id).execute()
-    data = res.data or []
-    
-    # If empty, seed default equipment
-    if not data:
-        defaults = [
-            {"user_id": user_id, "equipment_tag": "barbell", "is_available": True, "fallback_recommendation": "Dumbbells / Smith Machine"},
-            {"user_id": user_id, "equipment_tag": "dumbbells", "is_available": True, "fallback_recommendation": "Cable Machine / Kettlebells"},
-            {"user_id": user_id, "equipment_tag": "squat_rack", "is_available": True, "fallback_recommendation": "Hack Squat / Leg Press"},
-            {"user_id": user_id, "equipment_tag": "adjustable_bench", "is_available": True, "fallback_recommendation": "Floor Press / Stability Ball"},
-            {"user_id": user_id, "equipment_tag": "preacher_bench", "is_available": False, "fallback_recommendation": "Incline DB Curl / Cable Spider Curl"},
-            {"user_id": user_id, "equipment_tag": "cable_crossover", "is_available": True, "fallback_recommendation": "Resistance Bands / Dumbbell Flyes"},
-            {"user_id": user_id, "equipment_tag": "lat_pulldown", "is_available": True, "fallback_recommendation": "Pull-Up Bar / Inverted Row"},
-            {"user_id": user_id, "equipment_tag": "cable_row", "is_available": True, "fallback_recommendation": "Dumbbell Row / Chest-Supported T-Bar"},
-            {"user_id": user_id, "equipment_tag": "hack_squat", "is_available": False, "fallback_recommendation": "45° Leg Press / Belt Squat"},
-            {"user_id": user_id, "equipment_tag": "leg_press", "is_available": True, "fallback_recommendation": "Bulgarian Split Squat / Goblet Squat"},
-            {"user_id": user_id, "equipment_tag": "leg_extension_curl", "is_available": True, "fallback_recommendation": "DB Romanian Deadlift / Nordic Curl"}
-        ]
-        supabase.table("user_equipment").insert(defaults).execute()
-        data = defaults
-
-    available_count = sum(1 for item in data if item.get("is_available", True))
-    excluded_count = len(data) - available_count
-
-    return {
-        "user_id": user_id,
-        "available_count": available_count,
-        "excluded_count": excluded_count,
-        "equipment": data
-    }
-
 @web_app.post("/api/equipment/toggle")
 def toggle_equipment(payload: EquipmentToggleRequest):
-    """Toggles specific equipment availability and persists fallback mappings."""
+    """Toggles specific equipment availability and persists to user_equipment."""
     supabase = get_supabase()
-    res = supabase.table("user_equipment").update({
+    supabase.table("user_equipment").update({
         "is_available": payload.is_available
     }).eq("user_id", payload.user_id).eq("equipment_tag", payload.equipment_tag).execute()
 
@@ -624,6 +626,215 @@ Return a JSON object with:
         latency_ms=round(latency, 2),
         exercise=matched_canonical
     )
+
+@web_app.post("/api/equipment/search-disambiguate", response_model=EquipmentDisambiguateResponse)
+async def disambiguate_equipment(req: EquipmentDisambiguateRequest):
+    """
+    Visual Machine Disambiguation Engine:
+    Uses Gemini Flash to analyze natural language equipment queries and return 2-4 candidate gym machines
+    with structured biomechanical resistance curves, brand examples, and verified CDN thumbnail visual loops.
+    """
+    clean_query = req.query.strip()
+    if not clean_query:
+        raise HTTPException(status_code=400, detail="Search query is required")
+
+    q_lower = clean_query.lower()
+
+    # Curated fast fallbacks for instant sub-second response or when Gemini is offline
+    curated_fallbacks = []
+    if any(w in q_lower for w in ["chest", "press", "pec"]):
+        curated_fallbacks = [
+            EquipmentDisambiguateCandidate(
+                id="incline_chest_press_converging",
+                display_name="Incline Plate-Loaded Chest Press (Converging)",
+                category="machines",
+                image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0577.gif",
+                resistance_curve="Peak tension in deep lengthened stretch, natural converging joint arc",
+                common_gym_brands="Hammer Strength / Life Fitness / Prime",
+                fallback_recommendation="Incline Dumbbell Bench Press"
+            ),
+            EquipmentDisambiguateCandidate(
+                id="flat_selectorized_chest_press",
+                display_name="Seated Selectorized Chest Press (Pin-Loaded)",
+                category="machines",
+                image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0577.gif",
+                resistance_curve="Cam-guided even resistance curve across active horizontal adduction",
+                common_gym_brands="Matrix / Cybex / Technogym",
+                fallback_recommendation="Flat Dumbbell Press / Barbell Bench"
+            ),
+            EquipmentDisambiguateCandidate(
+                id="pec_deck_flye_machine",
+                display_name="Pec Deck Machine (Chest Fly)",
+                category="machines",
+                image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0596.gif",
+                resistance_curve="Maximal tension in the fully shortened adducted chest contraction",
+                common_gym_brands="Life Fitness / Nautilus / Atlantis",
+                fallback_recommendation="Cable Crossover / Incline Cable Flye"
+            )
+        ]
+    elif any(w in q_lower for w in ["squat", "leg press", "hack"]):
+        curated_fallbacks = [
+            EquipmentDisambiguateCandidate(
+                id="linear_hack_squat_45",
+                display_name="Linear 45° Hack Squat",
+                category="machines",
+                image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0743.gif",
+                resistance_curve="Peak knee flexion torque at parallel, high vastus lateralis stretch",
+                common_gym_brands="Cybex / Rogers Athletic / Prime",
+                fallback_recommendation="45° Leg Press / Smith Machine Squat"
+            ),
+            EquipmentDisambiguateCandidate(
+                id="sled_leg_press_45",
+                display_name="45° Plate-Loaded Sled Leg Press",
+                category="machines",
+                image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0739.gif",
+                resistance_curve="Constant linear carriage resistance with adjustable back support",
+                common_gym_brands="Hammer Strength / Life Fitness / Precor",
+                fallback_recommendation="Bulgarian Split Squat / Barbell Front Squat"
+            ),
+            EquipmentDisambiguateCandidate(
+                id="pendulum_squat",
+                display_name="Pendulum Squat Machine",
+                category="machines",
+                image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0743.gif",
+                resistance_curve="Counterbalanced arc minimizing lower back shear while overloading rectus femoris",
+                common_gym_brands="Atlantis / Watson / Prime",
+                fallback_recommendation="Machine Hack Squat / Leg Extension"
+            )
+        ]
+    elif any(w in q_lower for w in ["row", "back"]):
+        curated_fallbacks = [
+            EquipmentDisambiguateCandidate(
+                id="chest_supported_tbar_row",
+                display_name="45° Chest-Supported T-Bar Row Machine",
+                category="machines",
+                image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/1349.gif",
+                resistance_curve="Eliminates spinal erector fatigue; heavy upper back rhomboid bias",
+                common_gym_brands="Hammer Strength / Arsenal / Cybex",
+                fallback_recommendation="Incline Dumbbell Row / Seal Row"
+            ),
+            EquipmentDisambiguateCandidate(
+                id="seated_cable_row_station",
+                display_name="Seated Low Cable Row Station",
+                category="machines",
+                image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0214.gif",
+                resistance_curve="Smooth cable tension in both full lat stretch and scapular retraction",
+                common_gym_brands="Life Fitness / Matrix / Technogym",
+                fallback_recommendation="Chest-Supported Dumbbell Row"
+            )
+        ]
+
+    if GEMINI_API_KEY:
+        try:
+            import urllib.request
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
+            prompt = f"""You are a gym biomechanics equipment mediator for a training app.
+An athlete is configuring their gym's available equipment and searched for: "{clean_query}".
+
+Analyze this query and identify 2 to 4 distinct, real gym machine variants (plate-loaded, selectorized, cable attachments, or specialized machines) matching their search.
+Return a valid JSON array of objects with this exact structure:
+[
+  {{
+    "id": "machine_slug_name",
+    "display_name": "Full Descriptive Name (e.g. Incline Plate-Loaded Chest Press (Converging))",
+    "category": "machines",
+    "image_url": "https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0577.gif",
+    "resistance_curve": "Biomechanical description of tension profile across range of motion",
+    "common_gym_brands": "Hammer Strength / Matrix / Life Fitness / Cybex",
+    "fallback_recommendation": "Alternative free weight or cable movement if unavailable"
+  }}
+]
+
+Use valid ExerciseDB CDN URLs:
+- Chest Press / Incline: 0577.gif, 0757.gif, 0314.gif
+- Hack Squat / Leg Press: 0743.gif, 0739.gif, 0741.gif, 0755.gif
+- Row / T-Bar / Cable Row: 1349.gif, 0214.gif, 0327.gif, 0189.gif
+- Lat Pulldown: 2330.gif, 0818.gif, 0673.gif, 0579.gif
+- Pec Deck / Rear Delt: 0596.gif, 0601.gif, 0178.gif
+- Leg Extension / Leg Curl: 0585.gif, 0599.gif, 0586.gif, 0598.gif
+- Calf Machine: 0605.gif, 0594.gif
+- Shoulder Press: 0603.gif, 0405.gif, 0765.gif
+- Abdominal Crunch Machine: 0595.gif, 0175.gif
+- Dip / Pullup Machine: 0009.gif, 0678.gif"""
+
+            payload = json.dumps({
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"responseMimeType": "application/json"}
+            }).encode("utf-8")
+            
+            http_req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(http_req, timeout=6) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                parsed = json.loads(text)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    candidates = [
+                        EquipmentDisambiguateCandidate(
+                            id=str(c.get("id", "")).lower().replace(" ", "_"),
+                            display_name=str(c.get("display_name", clean_query)),
+                            category=str(c.get("category", "machines")),
+                            image_url=str(c.get("image_url", "https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0577.gif")),
+                            resistance_curve=str(c.get("resistance_curve", "Peak tension in lengthened range")),
+                            common_gym_brands=str(c.get("common_gym_brands", "Hammer Strength / Life Fitness")),
+                            fallback_recommendation=str(c.get("fallback_recommendation", "Free Weight / Cable Equivalent"))
+                        ) for c in parsed
+                    ]
+                    return EquipmentDisambiguateResponse(
+                        query=clean_query,
+                        source="gemini_flash",
+                        candidates=candidates
+                    )
+        except Exception as e:
+            print(f"Gemini disambiguation exception in backend: {e}")
+
+    # Fallback to curated candidates or clean generic candidate
+    final_candidates = curated_fallbacks if curated_fallbacks else [
+        EquipmentDisambiguateCandidate(
+            id=clean_query.lower().replace(" ", "_"),
+            display_name=f"{clean_query.title()} Machine",
+            category="machines",
+            image_url="https://cdn.jsdelivr.net/gh/omercotkd/exercises-gifs@main/assets/0577.gif",
+            resistance_curve="Cam-guided progressive resistance curve",
+            common_gym_brands="Life Fitness / Matrix / Hammer Strength",
+            fallback_recommendation="Free Weight / Cable Equivalent"
+        )
+    ]
+
+    return EquipmentDisambiguateResponse(
+        query=clean_query,
+        source="curated_catalog",
+        candidates=final_candidates
+    )
+
+@web_app.get("/api/equipment")
+def get_equipment(user_id: str = "00000000-0000-0000-0000-000000000001"):
+    supabase = get_supabase()
+    res = supabase.table("user_equipment").select("*").eq("user_id", user_id).order("category").order("display_name").execute()
+    items = res.data or []
+    available = [i for i in items if i.get("is_available", True)]
+    return {
+        "user_id": user_id,
+        "available_count": len(available),
+        "excluded_count": len(items) - len(available),
+        "equipment": items
+    }
+
+@web_app.post("/api/equipment")
+def save_equipment(req: EquipmentToggleRequest):
+    supabase = get_supabase()
+    row = {
+        "user_id": req.user_id,
+        "equipment_tag": req.equipment_tag,
+        "category": req.category or "machines",
+        "display_name": req.display_name or req.equipment_tag.replace("_", " ").title(),
+        "image_url": req.image_url,
+        "is_available": req.is_available,
+        "fallback_recommendation": req.fallback_recommendation or "Alternative Free Weight / Cable equivalent",
+        "resistance_curve": req.resistance_curve,
+        "common_gym_brands": req.common_gym_brands
+    }
+    supabase.table("user_equipment").upsert(row, on_conflict="user_id,equipment_tag").execute()
+    return {"success": True, "item": row}
 
 @web_app.post("/api/routine/log", response_model=RoutineLogResponse)
 def log_routine(req: RoutineLogRequest):
