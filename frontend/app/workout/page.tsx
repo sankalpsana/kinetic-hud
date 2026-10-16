@@ -218,10 +218,26 @@ function WorkoutContent() {
     setExercises((prev) => {
       const updated = [...prev];
       const target = updated[swapTargetIndex];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const matchEx = (swapMatchResult.exercise || {}) as any;
       if (target) {
         updated[swapTargetIndex] = {
           ...target,
+          exercise_id: matchEx.id || matchEx.exercise_id || target.exercise_id,
           name: swapMatchResult.canonical_name,
+          primary_muscle: matchEx.primary_muscle || target.primary_muscle,
+          movement_pattern: matchEx.movement_pattern || target.movement_pattern,
+          equipment_tag: matchEx.equipment_tag || target.equipment_tag,
+          joint_stress_flags: matchEx.joint_stress_flags || target.joint_stress_flags,
+          video_url: matchEx.video_url || matchEx.gif_url || target.video_url,
+          gif_url: matchEx.gif_url || target.gif_url,
+          poster_image_url: matchEx.poster_image_url || matchEx.gif_url || target.poster_image_url,
+          target_muscle_svg_tag: matchEx.target_muscle_svg_tag || target.target_muscle_svg_tag,
+          tempo_recommendation: matchEx.tempo_recommendation || target.tempo_recommendation,
+          biomechanical_cue: matchEx.biomechanical_cue || target.biomechanical_cue,
+          target_division: matchEx.target_division || target.target_division,
+          resistance_profile: matchEx.resistance_profile || target.resistance_profile,
+          stability_tier: matchEx.stability_tier || target.stability_tier,
           substitution_applied: `Mediator Match via ${swapMatchResult.source} (${swapMatchResult.latency_ms}ms)`,
         };
       }
