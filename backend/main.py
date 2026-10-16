@@ -2,6 +2,7 @@ import os
 import time
 import json
 from typing import List, Optional, Dict, Any
+from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -171,6 +172,25 @@ class EquipmentDisambiguateResponse(BaseModel):
     query: str
     source: str
     candidates: List[EquipmentDisambiguateCandidate]
+
+class SessionUpdateRequest(BaseModel):
+    split_name: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    energy_score: Optional[int] = None
+    soreness_flags: Optional[List[str]] = None
+
+class SetUpdateRequest(BaseModel):
+    weight_kg: Optional[float] = None
+    reps: Optional[int] = None
+    rpe: Optional[float] = None
+    set_number: Optional[int] = None
+
+class SetCreateRequest(BaseModel):
+    exercise_id: Optional[str] = None
+    set_number: int
+    weight_kg: float
+    reps: int
+    rpe: Optional[float] = 8.0
 
 # -----------------
 # Core Endpoints
@@ -996,6 +1016,281 @@ def log_routine(req: RoutineLogRequest):
         split_type=req.split_type or "PULL_A",
         split_name=req.split_name,
         duration_minutes=req.duration_minutes,
+        total_volume_kg=round(total_volume, 1),
+        completed_sets=total_hard_sets,
+        volume_delta_kg=round(total_volume * 0.04, 1),
+        progression_verdicts=progression_verdicts,
+        recovery_statuses=recovery_statuses
+    )
+
+# -----------------
+# Session & Set Management Endpoints (CRUD)
+# -----------------
+
+@web_app.get("/api/sessions")
+def get_sessions(
+    user_id: str = "00000000-0000-0000-0000-000000000001",
+    limit: int = 30,
+    offset: int = 0
+):
+    """Returns a paginated list of past workout sessions with nested exercises and completed sets."""
+    supabase = get_supabase()
+    res = supabase.table("workout_sessions") \
+        .select("*, set_logs(*, exercises(id, canonical_name, primary_muscle, stability_tier, resistance_profile, gif_url))") \
+        .eq("user_id", user_id) \
+        .order("created_at", desc=True) \
+        .range(offset, offset + limit - 1) \
+        .execute()
+
+    raw_sessions = res.data or []
+    formatted = []
+    for s in raw_sessions:
+        raw_sets = s.get("set_logs") or []
+        # Sort sets by created_at or set_number
+        sorted_sets = sorted(raw_sets, key=lambda x: (x.get("created_at") or "", x.get("set_number", 0)))
+
+        exercise_map: Dict[str, Dict[str, Any]] = {}
+        for st in sorted_sets:
+            ex = st.get("exercises") or {}
+            eid = st.get("exercise_id") or "unassigned"
+            if eid not in exercise_map:
+                exercise_map[eid] = {
+                    "exercise_id": eid,
+                    "canonical_name": ex.get("canonical_name") or "Logged Movement",
+                    "primary_muscle": ex.get("primary_muscle") or "Target Muscle",
+                    "stability_tier": ex.get("stability_tier"),
+                    "resistance_profile": ex.get("resistance_profile"),
+                    "gif_url": ex.get("gif_url"),
+                    "sets": []
+                }
+            exercise_map[eid]["sets"].append({
+                "id": st.get("id"),
+                "set_number": st.get("set_number"),
+                "weight_kg": float(st.get("weight_kg", 0)),
+                "reps": st.get("reps", 0),
+                "rpe": float(st.get("rpe", 8.0)) if st.get("rpe") is not None else 8.0,
+                "created_at": st.get("created_at"),
+                "updated_at": st.get("updated_at")
+            })
+
+        formatted.append({
+            "id": s.get("id"),
+            "user_id": s.get("user_id"),
+            "split_name": s.get("split_name"),
+            "split_type": s.get("split_type"),
+            "duration_minutes": s.get("duration_minutes", 0),
+            "energy_score": s.get("energy_score", 4),
+            "soreness_flags": s.get("soreness_flags") or [],
+            "total_volume_kg": float(s.get("total_volume_kg", 0)) if s.get("total_volume_kg") else 0.0,
+            "created_at": s.get("created_at"),
+            "updated_at": s.get("updated_at"),
+            "exercises": list(exercise_map.values()),
+            "total_sets": len(sorted_sets)
+        })
+
+    return {
+        "sessions": formatted,
+        "total": len(formatted),
+        "limit": limit,
+        "offset": offset
+    }
+
+@web_app.delete("/api/sessions/{session_id}")
+def delete_session(session_id: str):
+    """Deletes the specified workout session and cascades deletion to all linked set logs."""
+    supabase = get_supabase()
+    res = supabase.table("workout_sessions").delete().eq("id", session_id).execute()
+    return {"success": True, "deleted_session_id": session_id}
+
+@web_app.put("/api/sessions/{session_id}")
+def update_session(session_id: str, req: SessionUpdateRequest):
+    """Updates session-level metadata (duration, split_name, energy_score, soreness_flags)."""
+    supabase = get_supabase()
+    updates: Dict[str, Any] = {}
+    if req.split_name is not None:
+        updates["split_name"] = req.split_name
+    if req.duration_minutes is not None:
+        updates["duration_minutes"] = req.duration_minutes
+    if req.energy_score is not None:
+        updates["energy_score"] = req.energy_score
+    if req.soreness_flags is not None:
+        updates["soreness_flags"] = req.soreness_flags
+
+    if not updates:
+        return {"success": True, "message": "No fields to update"}
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = supabase.table("workout_sessions").update(updates).eq("id", session_id).execute()
+    return {"success": True, "session": res.data[0] if res.data else None}
+
+@web_app.put("/api/sets/{set_id}")
+def update_set(set_id: str, req: SetUpdateRequest):
+    """Updates recorded weight, reps, or RPE for an individual set."""
+    supabase = get_supabase()
+    updates: Dict[str, Any] = {}
+    if req.weight_kg is not None:
+        updates["weight_kg"] = req.weight_kg
+    if req.reps is not None:
+        updates["reps"] = req.reps
+    if req.rpe is not None:
+        updates["rpe"] = req.rpe
+    if req.set_number is not None:
+        updates["set_number"] = req.set_number
+
+    if not updates:
+        return {"success": True, "message": "No changes requested"}
+
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = supabase.table("set_logs").update(updates).eq("id", set_id).execute()
+    return {"success": True, "set": res.data[0] if res.data else None}
+
+@web_app.delete("/api/sets/{set_id}")
+def delete_set(set_id: str):
+    """Removes a single set from an exercise."""
+    supabase = get_supabase()
+    res = supabase.table("set_logs").delete().eq("id", set_id).execute()
+    return {"success": True, "deleted_set_id": set_id}
+
+@web_app.post("/api/sessions/{session_id}/sets")
+def add_set_to_session(session_id: str, req: SetCreateRequest):
+    """Appends a new set to an exercise in a session."""
+    supabase = get_supabase()
+    record = {
+        "session_id": session_id,
+        "exercise_id": req.exercise_id,
+        "set_number": req.set_number,
+        "weight_kg": req.weight_kg,
+        "reps": req.reps,
+        "rpe": req.rpe or 8.0
+    }
+    res = supabase.table("set_logs").insert(record).execute()
+    return {"success": True, "set": res.data[0] if res.data else record}
+
+@web_app.delete("/api/sessions/{session_id}/exercises/{exercise_id}")
+def delete_session_exercise(session_id: str, exercise_id: str):
+    """Deletes all sets recorded for a given exercise within that session."""
+    supabase = get_supabase()
+    res = supabase.table("set_logs").delete().eq("session_id", session_id).eq("exercise_id", exercise_id).execute()
+    return {"success": True, "session_id": session_id, "deleted_exercise_id": exercise_id}
+
+@web_app.post("/api/sessions/{session_id}/recalculate")
+def recalculate_session(session_id: str):
+    """Automatically re-evaluates double progression recommendations and updates total volume after edits."""
+    supabase = get_supabase()
+    s_res = supabase.table("workout_sessions").select("*").eq("id", session_id).execute()
+    if not s_res.data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session = s_res.data[0]
+
+    sets_res = supabase.table("set_logs").select("*, exercises(*)").eq("session_id", session_id).order("set_number").execute()
+    sets = sets_res.data or []
+
+    total_volume = sum(float(s.get("weight_kg", 0)) * int(s.get("reps", 0)) for s in sets)
+    total_hard_sets = len([s for s in sets if int(s.get("reps", 0)) > 0])
+
+    supabase.table("workout_sessions").update({
+        "total_volume_kg": round(total_volume, 2),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }).eq("id", session_id).execute()
+
+    exercise_sets: Dict[str, list] = {}
+    for s in sets:
+        eid = s.get("exercise_id") or "default"
+        if eid not in exercise_sets:
+            exercise_sets[eid] = []
+        exercise_sets[eid].append(s)
+
+    ex_res = supabase.table("exercises").select("id, canonical_name, primary_muscle, stability_tier, resistance_profile").execute()
+    ex_meta = {e["id"]: e for e in (ex_res.data or [])}
+
+    progression_verdicts = []
+    trained_muscles = set()
+
+    for eid, sets_list in exercise_sets.items():
+        meta = ex_meta.get(eid, {})
+        ex_name = meta.get("canonical_name", "Exercise")
+        primary_muscle = meta.get("primary_muscle", "Muscle")
+        trained_muscles.add(primary_muscle)
+
+        avg_reps = sum(s.get("reps", 0) for s in sets_list) / len(sets_list) if sets_list else 10.0
+        max_weight = max((float(s.get("weight_kg", 0)) for s in sets_list), default=20.0)
+
+        all_hit_ceiling = all(s.get("reps", 0) >= 10 for s in sets_list) and all(float(s.get("rpe", 8.0)) <= 8.5 for s in sets_list)
+
+        is_plateaued = False
+        try:
+            hist_res = supabase.table("set_logs") \
+                .select("weight_kg, reps, rpe, session_id, created_at") \
+                .eq("exercise_id", eid) \
+                .neq("session_id", session_id) \
+                .order("created_at", desc=True) \
+                .limit(6) \
+                .execute()
+            hist_sets = hist_res.data or []
+            if len(hist_sets) >= 4:
+                prev_weights = [h["weight_kg"] for h in hist_sets[:4]]
+                prev_rpes = [h.get("rpe", 8.0) for h in hist_sets[:4]]
+                if all(w == max_weight for w in prev_weights) and all(r >= 9.0 for r in prev_rpes):
+                    is_plateaued = True
+        except Exception as e:
+            print(f"Plateau check note: {e}")
+
+        is_compound = any(kw in ex_name.lower() for kw in ["press", "squat", "row", "deadlift", "rdl"])
+        bump = 2.5 if is_compound else 1.25
+
+        if is_plateaued:
+            progression_verdicts.append(ProgressionVerdict(
+                exercise_name=ex_name,
+                status="Plateau Detected",
+                verdict_badge="ROTATE VARIATION",
+                recommendation=f"Stalled at {max_weight} kg for 2 consecutive cycles at RPE 9+. Rotate to a biomechanical alternative next rotation."
+            ))
+        elif all_hit_ceiling and sets_list:
+            next_weight = round(max_weight + bump, 2)
+            progression_verdicts.append(ProgressionVerdict(
+                exercise_name=ex_name,
+                status="Progression Approved",
+                verdict_badge=f"+{bump} KG ({next_weight} KG)",
+                recommendation=f"All sets completed at ceiling ({round(avg_reps, 1)} reps avg @ RPE <= 8.5). Increase load to {next_weight} kg next session."
+            ))
+        else:
+            progression_verdicts.append(ProgressionVerdict(
+                exercise_name=ex_name,
+                status="Hold Load",
+                verdict_badge=f"HOLD AT {round(max_weight, 1)} KG",
+                recommendation=f"Maintain {max_weight} kg. Target 10 clean reps across all working sets (currently {round(avg_reps, 1)} avg) before overloading."
+            ))
+
+    RECOVERY_HOURS = {
+        "Chest": 48, "Upper Chest": 48, "Lats": 48, "Upper Back": 48,
+        "Traps": 36, "Deltoids": 36, "Rear Delts": 36, "Biceps": 36,
+        "Triceps": 36, "Quadriceps": 72, "Hamstrings": 72, "Glutes": 72, "Calves": 36
+    }
+    recovery_statuses = []
+    for m in trained_muscles:
+        hours = RECOVERY_HOURS.get(m, 48)
+        recovery_statuses.append(RecoveryStatus(
+            muscle_group=m,
+            readiness=f"Ready in {hours}h (Supercompensation Window)",
+            recovery_percent=int(round(max(25, 100 - (hours * 1.0))))
+        ))
+    if not recovery_statuses:
+        recovery_statuses.append(RecoveryStatus(
+            muscle_group="Prime Movers",
+            readiness="Ready in 48h (Adaptive Rest)",
+            recovery_percent=35
+        ))
+    recovery_statuses.append(RecoveryStatus(
+        muscle_group="Central Nervous System",
+        readiness="Supercompensated in 24–36h",
+        recovery_percent=85
+    ))
+
+    return RoutineLogResponse(
+        session_id=str(session_id),
+        split_type=session.get("split_type") or "PULL_A",
+        split_name=session.get("split_name") or "Workout",
+        duration_minutes=session.get("duration_minutes", 0),
         total_volume_kg=round(total_volume, 1),
         completed_sets=total_hard_sets,
         volume_delta_kg=round(total_volume * 0.04, 1),
