@@ -268,7 +268,9 @@ def generate_routine(req: RoutineGenerateRequest):
     eq_res = supabase.table("user_equipment").select("equipment_tag, is_available").eq("user_id", req.user_id).execute()
     available_tags = {r["equipment_tag"] for r in (eq_res.data or []) if r.get("is_available", True)}
     if not available_tags:
-        available_tags = {"barbell", "dumbbells", "squat_rack", "adjustable_bench", "cable_crossover", "lat_pulldown", "cable_row", "leg_press", "leg_extension_curl", "hack_squat", "smith_machine"}
+        available_tags = {"barbell", "dumbbells", "squat_rack", "adjustable_bench", "cable_crossover", "lat_pulldown", "cable_row", "leg_press", "leg_extension_curl", "hack_squat", "smith_machine", "machine"}
+    else:
+        available_tags.add("machine")
 
     adjustments = []
 
@@ -347,6 +349,7 @@ Respond with a JSON array of strings, e.g. ["axial_spine", "shoulder"]. If none 
         adjustments.append("Soreness Auto-Regulation: " + ", ".join(soreness_notes))
 
     # 2. Biomechanical Substitution & Equipment Availability (Strict primary_split isolation)
+    candidate_ids = {c["id"] for c in candidate_exercises}
     filtered = []
     for ex in candidate_exercises:
         stress_flags = [str(sf).lower() for sf in (ex.get("joint_stress_flags") or [])]
@@ -365,7 +368,7 @@ Respond with a JSON array of strings, e.g. ["axial_spine", "shoulder"]. If none 
             
             sub = next((
                 s for s in (sub_res.data or [])
-                if s["id"] != ex["id"] and not any(str(sf).lower() in exclusion_tags for sf in (s.get("joint_stress_flags") or []))
+                if s["id"] != ex["id"] and s["id"] not in candidate_ids and not any(str(sf).lower() in exclusion_tags for sf in (s.get("joint_stress_flags") or []))
             ), None)
 
             if sub:
@@ -384,7 +387,7 @@ Respond with a JSON array of strings, e.g. ["axial_spine", "shoulder"]. If none 
             sub_res = supabase.table("exercises").select("*").eq("primary_split", primary_split).execute()
             sub = next((
                 s for s in (sub_res.data or [])
-                if s.get("equipment_tag") in available_tags and s["id"] != ex["id"] and not any(str(sf).lower() in exclusion_tags for sf in (s.get("joint_stress_flags") or []))
+                if s.get("equipment_tag") in available_tags and s["id"] != ex["id"] and s["id"] not in candidate_ids and not any(str(sf).lower() in exclusion_tags for sf in (s.get("joint_stress_flags") or []))
             ), None)
             if sub:
                 ex_copy = dict(sub)
@@ -398,10 +401,13 @@ Respond with a JSON array of strings, e.g. ["axial_spine", "shoulder"]. If none 
 
     # Deduplicate candidate exercises while preserving order
     seen_ids = set()
+    seen_names = set()
     deduped = []
     for ex in filtered:
-        if ex["id"] not in seen_ids:
+        name_clean = ex["canonical_name"].strip().lower()
+        if ex["id"] not in seen_ids and name_clean not in seen_names:
             seen_ids.add(ex["id"])
+            seen_names.add(name_clean)
             deduped.append(ex)
 
     # 3. Dynamic Time-Volume Scaling Engine

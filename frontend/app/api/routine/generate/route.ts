@@ -95,7 +95,9 @@ export async function POST(request: Request) {
       (eqData || []).filter((e) => e.is_available).map((e) => e.equipment_tag)
     );
     if (availableTags.size === 0) {
-      ['barbell', 'dumbbells', 'squat_rack', 'adjustable_bench', 'cable_crossover', 'lat_pulldown', 'cable_row', 'leg_press', 'leg_extension_curl', 'hack_squat', 'smith_machine'].forEach((t) => availableTags.add(t));
+      ['barbell', 'dumbbells', 'squat_rack', 'adjustable_bench', 'cable_crossover', 'lat_pulldown', 'cable_row', 'leg_press', 'leg_extension_curl', 'hack_squat', 'smith_machine', 'machine'].forEach((t) => availableTags.add(t));
+    } else {
+      availableTags.add('machine');
     }
 
     // 3. Hard SQL Filtering: primary_split = :split AND split_rotation = :rotation
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
     }
 
     const candidateExercises: Exercise[] = exData || [];
+    const candidateIds = new Set<string>(candidateExercises.map((c) => c.id));
     const adjustments: string[] = [];
 
     // Natural Language Soreness Parser
@@ -169,7 +172,7 @@ export async function POST(request: Request) {
           .in('stability_tier', ['S', 'A']);
 
         const safeSub = (subs || []).find(
-          (s) => s.id !== ex.id && !(s.joint_stress_flags || []).some((sf: string) => exclusionTags.includes(sf.toLowerCase()))
+          (s) => s.id !== ex.id && !candidateIds.has(s.id) && !(s.joint_stress_flags || []).some((sf: string) => exclusionTags.includes(sf.toLowerCase()))
         );
 
         if (safeSub) {
@@ -190,7 +193,7 @@ export async function POST(request: Request) {
           .eq('primary_split', primarySplit);
 
         const availableSub = (subs || []).find(
-          (s) => availableTags.has(s.equipment_tag) && s.id !== ex.id && !(s.joint_stress_flags || []).some((sf: string) => exclusionTags.includes(sf.toLowerCase()))
+          (s) => availableTags.has(s.equipment_tag) && s.id !== ex.id && !candidateIds.has(s.id) && !(s.joint_stress_flags || []).some((sf: string) => exclusionTags.includes(sf.toLowerCase()))
         );
         if (availableSub) {
           const applied = `Equipment Auto-Swap: ${ex.canonical_name} (${eqTag} unavailable) replaced with ${availableSub.canonical_name}.`;
@@ -205,10 +208,13 @@ export async function POST(request: Request) {
 
     // Deduplicate candidate exercises while preserving order
     const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
     const deduped: Array<Exercise & { substitution_applied?: string }> = [];
     for (const ex of filtered) {
-      if (!seenIds.has(ex.id)) {
+      const nameClean = ex.canonical_name.trim().toLowerCase();
+      if (!seenIds.has(ex.id) && !seenNames.has(nameClean)) {
         seenIds.add(ex.id);
+        seenNames.add(nameClean);
         deduped.push(ex);
       }
     }
