@@ -55,6 +55,10 @@ class PrescribedExercise(BaseModel):
     equipment_tag: str
     joint_stress_flags: List[str]
     gif_url: str
+    video_url: Optional[str] = None
+    poster_image_url: Optional[str] = None
+    target_muscle_svg_tag: Optional[str] = "quads"
+    tempo_recommendation: Optional[str] = "3s controlled eccentric, 1s stretch hold, explosive concentric"
     biomechanical_cue: str
     primary_split: str
     split_rotation: str
@@ -478,6 +482,10 @@ Respond with a JSON array of strings, e.g. ["axial_spine", "shoulder"]. If none 
             equipment_tag=ex.get("equipment_tag", "dumbbells"),
             joint_stress_flags=ex.get("joint_stress_flags") or [],
             gif_url=ex.get("gif_url") or "",
+            video_url=ex.get("video_url") or ex.get("gif_url") or "",
+            poster_image_url=ex.get("poster_image_url") or ex.get("gif_url") or "",
+            target_muscle_svg_tag=ex.get("target_muscle_svg_tag") or "quads",
+            tempo_recommendation=ex.get("tempo_recommendation") or "3s controlled eccentric, 1s stretch hold, explosive concentric",
             biomechanical_cue=ex.get("biomechanical_cue") or "Control 3-second eccentric and train deep lengthened stretch.",
             primary_split=ex.get("primary_split", primary_split),
             split_rotation=ex.get("split_rotation", split_rotation),

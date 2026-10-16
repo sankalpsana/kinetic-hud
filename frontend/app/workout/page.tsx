@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import HUDHeader from '@/components/HUDHeader';
+import ExerciseMediaVisual from '@/components/ExerciseMediaVisual';
+import ExerciseDetailModal from '@/components/ExerciseDetailModal';
 
 interface ExerciseItem {
   exercise_id: string;
@@ -12,6 +14,10 @@ interface ExerciseItem {
   equipment_tag: string;
   joint_stress_flags?: string[];
   gif_url?: string;
+  video_url?: string;
+  poster_image_url?: string;
+  target_muscle_svg_tag?: string;
+  tempo_recommendation?: string;
   biomechanical_cue: string;
   primary_split?: string;
   split_rotation?: string;
@@ -70,6 +76,9 @@ function WorkoutContent() {
   const [swapQuery, setSwapQuery] = useState<string>('');
   const [swapMatchResult, setSwapMatchResult] = useState<{ canonical_name: string; latency_ms: number; source: string; exercise: Record<string, unknown> } | null>(null);
   const [isMatching, setIsMatching] = useState<boolean>(false);
+
+  // Form Guide & Silhouette Modal State
+  const [detailExercise, setDetailExercise] = useState<ExerciseItem | null>(null);
 
   // Load routine from API
   useEffect(() => {
@@ -368,6 +377,17 @@ function WorkoutContent() {
                     )}
                   </div>
 
+                  {/* Movement Demonstration Visual with Nippard Cue Overlay */}
+                  <ExerciseMediaVisual
+                    name={ex.name}
+                    videoUrl={ex.video_url}
+                    gifUrl={ex.gif_url}
+                    posterUrl={ex.poster_image_url}
+                    biomechanicalCue={ex.biomechanical_cue}
+                    showCueOverlay={true}
+                    onExpand={() => setDetailExercise(ex)}
+                  />
+
                   {/* Target Prescription & Rest */}
                   <div className="flex items-center justify-between pt-1 border-t border-[#262a34]">
                     <span className="font-body text-[13px] text-[#dfe2ef] font-medium">
@@ -520,18 +540,24 @@ function WorkoutContent() {
                   <span className="font-metric text-[10px] text-[#93c5fd] uppercase font-semibold px-2 py-0.5 rounded bg-[#93c5fd]/10">
                     {currentExercise.resistance_profile || 'lengthened'}
                   </span>
+                  {currentExercise.tempo_recommendation && (
+                    <span className="font-metric text-[10px] text-[#ffb95f] uppercase font-semibold px-2 py-0.5 rounded bg-[#ffb95f]/10 border border-[#ffb95f]/20">
+                      ⏱ {currentExercise.tempo_recommendation}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Form Cue Banner */}
-              <div className="flex items-start gap-3 bg-[#262a34]/70 p-3 rounded-lg border border-[#ffb95f]/20">
-                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#ffb95f]/15 text-[#ffb95f] shrink-0 mt-0.5">
-                  <span className="material-symbols-outlined text-[16px]">lightbulb</span>
-                </div>
-                <p className="font-body text-[13px] text-[#dfe2ef] leading-snug">
-                  <span className="font-semibold text-[#ffb95f]">Form Cue:</span> {currentExercise.biomechanical_cue}
-                </p>
-              </div>
+              {/* Movement Visual Container & Live Form Guide */}
+              <ExerciseMediaVisual
+                name={currentExercise.name}
+                videoUrl={currentExercise.video_url}
+                gifUrl={currentExercise.gif_url}
+                posterUrl={currentExercise.poster_image_url}
+                biomechanicalCue={currentExercise.biomechanical_cue}
+                showCueOverlay={true}
+                onExpand={() => setDetailExercise(currentExercise)}
+              />
 
               {/* Set Log Matrix */}
               <div className="flex flex-col gap-3">
@@ -748,6 +774,13 @@ function WorkoutContent() {
           </div>
         </div>
       )}
+
+      {/* Tap-to-Expand Full-Screen Form Guide & Anatomical Silhouette Modal */}
+      <ExerciseDetailModal
+        exercise={detailExercise}
+        isOpen={!!detailExercise}
+        onClose={() => setDetailExercise(null)}
+      />
     </>
   );
 }

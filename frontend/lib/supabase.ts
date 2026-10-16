@@ -29,6 +29,10 @@ export interface Exercise {
   resistance_profile: 'lengthened' | 'shortened' | 'even';
   stability_tier: 'S' | 'A' | 'B' | 'C';
   rest_default_seconds: number;
+  video_url?: string;
+  poster_image_url?: string;
+  target_muscle_svg_tag?: string;
+  tempo_recommendation?: string;
 }
 
 export interface WorkoutSession {
